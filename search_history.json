@@ -1,0 +1,77 @@
+[
+  {
+    "timestamp": "2025-10-23T13:36:09.838740",
+    "profile_summary": {
+      "pendidikan": "D4/S1",
+      "jurusan": "Komputasi statistik",
+      "top_skills": [
+        "pemrograman",
+        "data cleaning",
+        "machine learning",
+        "kepemimpinan",
+        "menejemen waktu"
+      ]
+    },
+    "results_count": 10,
+    "top_match": "Programmer Ahli Muda",
+    "top_score": 0.1664
+  },
+  {
+    "timestamp": "2025-10-23T14:08:06.889345",
+    "profile_summary": {
+      "pendidikan": "D4/S1",
+      "jurusan": "komputasi statistik",
+      "top_skills": [
+        "pemrograman",
+        "buat website",
+        "aplikasi",
+        "data",
+        "analisis data"
+      ]
+    },
+    "results_count": 10,
+    "top_match": "Programmer Ahli Muda",
+    "top_score": 0.1789000223517418
+  },
+  {
+    "timestamp": "2025-10-23T14:20:39.713782",
+    "profile_summary": {
+      "pendidikan": "D4/S1",
+      "jurusan": "komputasi statistik",
+      "top_skills": [
+        "pemrograman",
+        "buat website",
+        "aplikasi",
+        "data",
+        "analisis data"
+      ]
+    },
+    "results_count": 10,
+    "top_match": "Programmer Ahli Muda",
+    "top_score": 0.1789000223517418
+  },
+  {
+    "timestamp": "2025-10-23T15:40:26.191759",
+    "profile_summary": {
+      "pendidikan": "D4/S1",
+      "jurusan": "Akuntansi",
+      "top_skills": [
+        "Analisis dan penyusunan anggaran\n\nPenyusunan laporan keuangan instansi pemerintah\n\nPengelolaan keuangan berbasis kinerja\n\nPerencanaan dan evaluasi program kerja\n\nPenguasaan aplikasi SIPD",
+        "RKAKL",
+        "Excel tingkat lanjut\n\nPemahaman peraturan keuangan negara dan daerah (UU Keuangan Negara",
+        "PMK",
+        "Permendagri)"
+      ]
+    },
+    "results_count": 20,
+    "top_match": "Auditor Ahli Pertama",
+    "top_score": 0.20000001788139415
+  },
+  {
+    "timestamp": "2025-10-23T17:11:39.584476",
+    "profile_summary": "D4/S1 - Ekonomi Pembangunan",
+    "results_count": 20,
+    "top_match": "Auditor Ahli Pertama",
+    "top_score": 0.15760001788139416
+  }
+]
