@@ -1,69 +1,43 @@
-# app_optimized.py — Rekomendasi Jabatan PNS (Enhanced & Optimized)
-# =====================================================================
-# Optimasi & Fitur Baru:
-# - Smart caching (embedding, BM25, preprocessing)
-# - Fuzzy matching untuk pendidikan/jurusan
-# - Weighted multi-criteria scoring
-# - Visual analytics & gap analysis
-# - Export hasil (Excel, PDF)
-# - Comparison mode
-# - History tracking
-# - Better error handling
-# - Progress indicators
-# - Optimized memory usage
-# - FIXED: Gemini AI Integration dengan input manual API key
-# =====================================================================
+"""
+Smart CASN Bidirectional Recommender System
+============================================
+Fitur Utama:
+1. Auto-load data dari folder assets/data
+2. Rekomendasi Jabatan untuk Kandidat (Candidate → Job Matching)
+3. Rekomendasi Pegawai untuk Instansi (Job → Candidate Matching)  
+4. Integrated AI Chatbot di setiap mode
+
+Run: streamlit run app_casn_v2.py
+"""
 
 import os
 import re
-import io
 import json
-import time
-import pickle
-import hashlib
-import unicodedata
+import glob
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import streamlit as st
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Load environment variables
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# Optional libraries dengan fallback
-try:
-    from rank_bm25 import BM25Okapi
-    HAS_BM25 = True
-except ImportError:
-    BM25Okapi = None
-    HAS_BM25 = False
-
+# Optional imports dengan fallback
 try:
     from sentence_transformers import SentenceTransformer
+    from sklearn.metrics.pairwise import cosine_similarity
     HAS_SBERT = True
 except ImportError:
-    SentenceTransformer = None
     HAS_SBERT = False
 
 try:
     import google.generativeai as genai
     HAS_GEMINI = True
 except ImportError:
-    genai = None
     HAS_GEMINI = False
-
-try:
-    from fuzzywuzzy import fuzz
-    HAS_FUZZY = True
-except ImportError:
-    HAS_FUZZY = False
 
 try:
     import plotly.express as px
@@ -72,1399 +46,921 @@ try:
 except ImportError:
     HAS_PLOTLY = False
 
-# ---------------------------
-# Konfigurasi
-# ---------------------------
+# ==================== KONFIGURASI ====================
 st.set_page_config(
-    page_title="Smart PNS Recommender",
-    page_icon="🧭",
+    page_title="CERDAS",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Konstanta
 CACHE_DIR = Path("cache")
 CACHE_DIR.mkdir(exist_ok=True)
-FEEDBACK_FILE = "feedback.csv"
-HISTORY_FILE = "search_history.json"
-PROFILE_FILE = "saved_profiles.json"
 
-# Model embedding default
-DEFAULT_EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+DATA_DIR = Path("assets/data")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# Stopwords Indonesia
-STOPWORDS_ID = set("""
-yang dan di ke dari dengan untuk pada atas dalam oleh sebagai adalah bahwa
-ini itu atau tidak ada serta juga namun karena jika maka bisa dapat guna
-demi para kepada terhadap lebih tanpa sudah telah akan merupakan olehnya
-saja bagi agar hingga sampai dimana daripada ketika setiap per nya lah
-kami kita kalian mereka mu ku sang si
-""".split())
+# Provinsi Indonesia
+PROVINSI_INDONESIA = [
+    "ACEH", "SUMATERA UTARA", "SUMATERA BARAT", "RIAU", "JAMBI",
+    "SUMATERA SELATAN", "BENGKULU", "LAMPUNG", "KEP. BANGKA BELITUNG",
+    "KEP. RIAU", "DKI JAKARTA", "JAWA BARAT", "JAWA TENGAH",
+    "DI YOGYAKARTA", "JAWA TIMUR", "BANTEN", "BALI", "NUSA TENGGARA BARAT",
+    "NUSA TENGGARA TIMUR", "KALIMANTAN BARAT", "KALIMANTAN TENGAH",
+    "KALIMANTAN SELATAN", "KALIMANTAN TIMUR", "KALIMANTAN UTARA",
+    "SULAWESI UTARA", "SULAWESI TENGAH", "SULAWESI SELATAN",
+    "SULAWESI TENGGARA", "GORONTALO", "SULAWESI BARAT", "MALUKU",
+    "MALUKU UTARA", "PAPUA BARAT", "PAPUA", "PAPUA TENGAH",
+    "PAPUA PEGUNUNGAN", "PAPUA SELATAN", "PAPUA BARAT DAYA"
+]
 
-# Sinonim skill (untuk expanding query)
-SKILL_SYNONYMS = {
-    "python": ["python", "python3", "py"],
-    "java": ["java", "javase", "javaee"],
-    "komunikasi": ["komunikasi", "komunikatif", "public speaking", "presentasi"],
-    "leadership": ["leadership", "kepemimpinan", "memimpin", "leader"],
-    "analisis": ["analisis", "analisa", "analytic", "analytical"],
-    "manajemen": ["manajemen", "management", "mengelola", "pengelolaan"],
-    "microsoft office": ["ms office", "microsoft office", "word", "excel", "powerpoint"],
-}
+# Jenjang Pendidikan
+JENJANG_PENDIDIKAN = ["SD", "SMP", "SMA/SMK", "D1", "D2", "D3", "D4", "S1", "S2", "S3"]
 
-# Mapping pendidikan
-EDUCATION_LEVELS = {
-    "S3": 5, "DOKTOR": 5, "DOCTORAL": 5,
-    "S2": 4, "MAGISTER": 4, "MASTER": 4,
-    "S1": 3, "SARJANA": 3, "BACHELOR": 3,
-    "D4": 2.5, "D-IV": 2.5, "SARJANA TERAPAN": 2.5,
-    "D3": 2, "D-III": 2, "DIPLOMA": 2,
-    "D2": 1.5, "D-II": 1.5,
-    "D1": 1, "D-I": 1,
-    "SMA": 0.5, "SMK": 0.5, "SLTA": 0.5,
-}
+# ==================== UTILITAS ====================
 
-
-# ---------------------------
-# Utilitas
-# ---------------------------
-
-def normalize_text(s: Any) -> str:
-    """Normalisasi teks dengan cleaning lebih baik"""
-    if pd.isna(s) or not isinstance(s, str):
+def normalize_text(text: str) -> str:
+    """Normalisasi teks"""
+    if pd.isna(text):
         return ""
-    s = s.strip()
-    s = unicodedata.normalize("NFKD", s)
-    s = s.encode("ascii", "ignore").decode("ascii")
-    s = s.lower()
-    s = re.sub(r"[^a-z0-9\s\-_/]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    return str(text).strip().lower()
 
+def format_currency(amount: int) -> str:
+    """Format mata uang IDR"""
+    return f"Rp {amount:,.0f}".replace(",", ".")
 
-def tokenize_id(s: str) -> List[str]:
-    """Tokenisasi dengan stopword removal"""
-    # Validasi input
-    if pd.isna(s) or not isinstance(s, str):
-        return []
-    
-    s = str(s)  # Pastikan string
-    tokens = re.findall(r"[a-z0-9_\-]+", s.lower())
-    return [t for t in tokens if t not in STOPWORDS_ID and len(t) > 1]
-
-
-def expand_skills(skills: List[str]) -> List[str]:
-    """Ekspansi skill dengan sinonim"""
-    expanded = set(skills)
-    for skill in skills:
-        skill_lower = skill.lower()
-        for key, synonyms in SKILL_SYNONYMS.items():
-            if skill_lower in synonyms:
-                expanded.update(synonyms)
-    return list(expanded)
-
-
-def fuzzy_match_education(user_edu: str, required_edu: str, threshold: int = 80) -> Tuple[bool, int]:
-    """Fuzzy matching untuk pendidikan dengan scoring"""
-    if not HAS_FUZZY:
-        return user_edu.lower() in required_edu.lower(), 50
-    
-    score = fuzz.token_set_ratio(user_edu.lower(), required_edu.lower())
-    return score >= threshold, score
-
-
-def get_education_level(edu_str: str) -> float:
-    """Extract education level dari string"""
-    edu_str = normalize_text(edu_str).upper()
-    for key, level in EDUCATION_LEVELS.items():
-        if key in edu_str:
-            return level
+def get_education_rank(edu: str) -> int:
+    """Ranking pendidikan untuk sorting"""
+    edu_map = {"SD": 1, "SMP": 2, "SMA/SMK": 3, "D1": 4, "D2": 5, 
+               "D3": 6, "D4": 7, "S1": 7, "S2": 8, "S3": 9}
+    for key in edu_map:
+        if key in edu.upper():
+            return edu_map[key]
     return 0
 
+def extract_provinsi(lokasi: str) -> str:
+    """Ekstrak nama provinsi dari lokasi"""
+    lokasi = lokasi.upper()
+    for prov in PROVINSI_INDONESIA:
+        if prov in lokasi:
+            return prov
+    return "TIDAK DIKETAHUI"
 
-def calculate_hash(data: Any) -> str:
-    """Generate hash untuk caching"""
-    return hashlib.md5(str(data).encode()).hexdigest()
+# ==================== DATA MANAGER ====================
 
-
-def save_to_cache(key: str, data: Any):
-    """Simpan data ke cache"""
-    cache_path = CACHE_DIR / f"{key}.pkl"
-    with open(cache_path, "wb") as f:
-        pickle.dump(data, f)
-
-
-def load_from_cache(key: str) -> Optional[Any]:
-    """Load data dari cache"""
-    cache_path = CACHE_DIR / f"{key}.pkl"
-    if cache_path.exists():
-        try:
-            with open(cache_path, "rb") as f:
-                return pickle.load(f)
-        except Exception:
-            return None
-    return None
-
-
-# ---------------------------
-# Data Management
-# ---------------------------
-
-class DataManager:
-    """Mengelola dataset jabatan dengan caching pintar"""
+class CASNDataManager:
+    """Mengelola 5 tabel data CASN dengan auto-load dari folder"""
     
     def __init__(self):
-        self.df = None
-        self.data_hash = None
-        
-    def load_data(self, uploaded_file=None, csv_path=None) -> pd.DataFrame:
-        """Load dan preprocess data"""
+        self.df_instansi = None
+        self.df_jabatan = None
+        self.df_tupoksi = None
+        self.df_prodi = None
+        self.df_jurusan_sma = None
+        self.df_merged = None
+        self.data_loaded = False
+    
+    def auto_load_from_folder(self) -> bool:
+        """Auto-load semua CSV dari folder assets/data - SILENT MODE"""
         try:
-            if uploaded_file:
-                self.df = pd.read_csv(uploaded_file)
-            elif csv_path:
-                self.df = pd.read_csv(csv_path)
-            else:
-                return None
+            csv_files = list(DATA_DIR.glob("*.csv"))
             
-            # Validasi kolom required
-            required_cols = ["judul_jabatan", "instansi", "unit_organisasi"]
-            missing_cols = [col for col in required_cols if col not in self.df.columns]
-            if missing_cols:
-                st.error(f"Kolom wajib tidak ditemukan: {missing_cols}")
-                return None
+            if not csv_files:
+                return False
             
-            # Data cleaning
-            self.df = self._clean_data(self.df)
+            # Load berdasarkan pattern nama file (tanpa output)
+            for csv_file in csv_files:
+                filename = csv_file.name.lower()
+                
+                if 'instansi' in filename or 'tabel_1' in filename:
+                    self.df_instansi = pd.read_csv(csv_file)
+                
+                elif 'jabatan' in filename or 'formasi' in filename or 'tabel_2' in filename:
+                    self.df_jabatan = pd.read_csv(csv_file)
+                
+                elif 'tupoksi' in filename or 'tabel_3' in filename:
+                    self.df_tupoksi = pd.read_csv(csv_file)
+                
+                elif 'prodi' in filename or 'program_studi' in filename or 'tabel_4' in filename:
+                    self.df_prodi = pd.read_csv(csv_file)
+                
+                elif 'jurusan' in filename or 'sma' in filename or 'tabel_5' in filename:
+                    self.df_jurusan_sma = pd.read_csv(csv_file)
             
-            # Generate hash untuk cache invalidation
-            self.data_hash = calculate_hash(self.df.to_dict())
+            # Validasi: Minimal tabel jabatan harus ada
+            if self.df_jabatan is None:
+                return False
             
-            st.success(f"✅ Data berhasil dimuat: {len(self.df)} jabatan")
-            return self.df
+            # Merge tables
+            self._merge_tables()
+            self.data_loaded = True
+            return True
             
         except Exception as e:
-            st.error(f"Error loading data: {e}")
-            return None
+            return False
     
-    def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Bersihkan dan standarisasi data"""
-        df = df.copy()
+    def _merge_tables(self):
+        """Gabungkan tabel untuk memudahkan search"""
+        df = self.df_jabatan.copy()
         
-        # Fill NaN
-        text_cols = df.select_dtypes(include=['object']).columns
-        for col in text_cols:
-            df[col] = df[col].fillna("")
+        # Join dengan tupoksi
+        if self.df_tupoksi is not None:
+            df = df.merge(
+                self.df_tupoksi[['nama_jabatan', 'deskripsi_tugas_pokok', 'rincian_kegiatan_fungsi']],
+                left_on='nama_jabatan',
+                right_on='nama_jabatan',
+                how='left'
+            )
         
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        for col in numeric_cols:
-            df[col] = df[col].fillna(0)
+        # Ekstraksi provinsi
+        df['provinsi'] = df['lokasi'].apply(extract_provinsi)
         
-        # Normalisasi teks penting
-        for col in ["judul_jabatan", "unit_organisasi", "instansi"]:
-            if col in df.columns:
-                df[f"{col}_normalized"] = df[col].apply(normalize_text)
+        # Parse rentang gaji
+        df['gaji_min'] = 0
+        df['gaji_max'] = 0
         
-        # Ekstraksi keywords jika belum ada
-        if "keywords" not in df.columns or df["keywords"].isna().all():
-            df["keywords"] = df.apply(self._extract_keywords, axis=1)
+        def parse_salary(s):
+            if pd.isna(s):
+                return 0, 0
+            parts = str(s).split('-')
+            try:
+                min_sal = int(parts[0].strip())
+                max_sal = int(parts[1].strip()) if len(parts) > 1 else min_sal
+                return min_sal, max_sal
+            except:
+                return 0, 0
         
-        # TAMBAHKAN INI: Pastikan keywords selalu string
-        df["keywords"] = df["keywords"].fillna("").astype(str)
+        df[['gaji_min', 'gaji_max']] = df['rentang_penghasilan'].apply(
+            lambda x: pd.Series(parse_salary(x))
+        )
         
-        return df
-    
-    def _extract_keywords(self, row) -> str:
-        """Ekstraksi keywords dari row"""
-        text_parts = []
-        for col in ["judul_jabatan", "tugas_pokok", "persyaratan_kompetensi", 
-                    "kualifikasi_pendidikan", "unit_organisasi"]:
-            if col in row and pd.notna(row[col]):
-                text_parts.append(str(row[col]))
+        # Buat search text
+        df['search_text'] = (
+            df['nama_jabatan'].fillna('') + ' ' +
+            df['kualifikasi_program_studi_jurusan'].fillna('') + ' ' +
+            df['deskripsi_tugas_pokok'].fillna('') + ' ' +
+            df['rincian_kegiatan_fungsi'].fillna('')
+        ).apply(normalize_text)
         
-        combined = " ".join(text_parts)
-        tokens = tokenize_id(normalize_text(combined))
-        return " ".join(tokens[:50])  # Top 50 keywords
+        self.df_merged = df
     
     def get_statistics(self) -> Dict[str, Any]:
-        """Dapatkan statistik dataset"""
-        if self.df is None:
+        """Statistik dataset"""
+        if self.df_merged is None:
             return {}
         
-        stats = {
-            "total_jabatan": len(self.df),
-            "total_instansi": self.df["instansi"].nunique() if "instansi" in self.df.columns else 0,
-            "total_formasi": self.df["jumlah_formasi"].sum() if "jumlah_formasi" in self.df.columns else 0,
+        return {
+            'total_jabatan': len(self.df_merged),
+            'total_formasi': self.df_merged['alokasi_kebutuhan'].sum(),
+            'total_instansi': self.df_merged['eselon_1_penempatan'].nunique(),
+            'provinsi_count': self.df_merged['provinsi'].nunique(),
+            'jenjang_pendidikan': self.df_merged['kualifikasi_tingkat_pendidikan'].value_counts().to_dict()
         }
-        
-        # Pendidikan distribution
-        if "kualifikasi_pendidikan" in self.df.columns:
-            edu_dist = self.df["kualifikasi_pendidikan"].value_counts().head(10)
-            stats["top_education"] = edu_dist.to_dict()
-        
-        # Lokasi distribution
-        if "lokasi_penempatan" in self.df.columns:
-            loc_dist = self.df["lokasi_penempatan"].value_counts().head(10)
-            stats["top_locations"] = loc_dist.to_dict()
-        
-        return stats
 
-
-# ---------------------------
-# Search Engine
-# ---------------------------
+# ==================== SEARCH ENGINE ====================
 
 class HybridSearchEngine:
-    """Hybrid search dengan BM25 + Embedding + Weighted Scoring"""
+    """Search engine dengan semantic + keyword matching"""
     
     def __init__(self, df: pd.DataFrame):
         self.df = df
-        self.bm25_index = None
         self.embeddings = None
-        self.embedding_model = None
-        self.corpus_tokens = None
-        
-    @st.cache_resource
-    def build_bm25_index(_self, data_hash: str):
-        """Build BM25 index dengan caching"""
-        cache_key = f"bm25_{data_hash}"
-        cached = load_from_cache(cache_key)
-        if cached:
-            return cached
-        
-        if not HAS_BM25:
-            st.warning("⚠️ BM25 tidak tersedia. Install: pip install rank-bm25")
-            return None, None
-        
-        # Pastikan keywords selalu string dan tidak kosong
-        keywords_list = _self.df["keywords"].fillna("").astype(str)
-        corpus_tokens = [tokenize_id(keywords) for keywords in keywords_list]
-        
-        # Filter corpus yang kosong
-        corpus_tokens = [tokens if tokens else ["unknown"] for tokens in corpus_tokens]
-        
-        bm25_index = BM25Okapi(corpus_tokens)
-        
-        result = (bm25_index, corpus_tokens)
-        save_to_cache(cache_key, result)
-        return result
+        self.model = None
     
-    @st.cache_resource
-    def build_embeddings(_self, data_hash: str, model_name: str = DEFAULT_EMBEDDING_MODEL):
-        """Build embeddings dengan caching"""
-        cache_key = f"embeddings_{data_hash}_{model_name}"
-        cached = load_from_cache(cache_key)
-        if cached:
-            return cached
-        
+    def build_embeddings(self, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2"):
+        """Build semantic embeddings - SILENT MODE"""
         if not HAS_SBERT:
-            st.warning("⚠️ Sentence-Transformers tidak tersedia")
-            return None, None
+            return
         
         try:
-            model = SentenceTransformer(model_name)
+            self.model = SentenceTransformer(model_name)
+            texts = self.df['search_text'].fillna('unknown').tolist()
             
-            # PERBAIKAN: Pastikan texts selalu string dan tidak kosong
-            texts = _self.df["keywords"].fillna("").astype(str).tolist()
-            
-            # Filter texts kosong, ganti dengan placeholder
-            texts = [text if text.strip() else "unknown" for text in texts]
-            
-            # Batch encoding untuk efisiensi
+            # Batch encoding tanpa progress bar
             batch_size = 32
-            embeddings = []
+            embeddings_list = []
             
-            progress_bar = st.progress(0)
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i+batch_size]
-                batch_emb = model.encode(batch, show_progress_bar=False)
-                embeddings.extend(batch_emb)
-                progress_bar.progress(min((i + batch_size) / len(texts), 1.0))
+                batch_emb = self.model.encode(batch, show_progress_bar=False)
+                embeddings_list.extend(batch_emb)
             
-            progress_bar.empty()  # Hapus progress bar setelah selesai
-            
-            embeddings = np.array(embeddings)
-            result = (model, embeddings)
-            save_to_cache(cache_key, result)
-            return result
-            
-        except Exception as e:
-            st.error(f"Error building embeddings: {e}")
-            return None, None
+            self.embeddings = np.array(embeddings_list)
+        except:
+            pass
     
-    def search(self, profile: Dict[str, Any], top_k: int = 20, 
-               weights: Dict[str, float] = None) -> pd.DataFrame:
-        """
-        Hybrid search dengan multi-criteria weighted scoring
-        
-        Weights: {
-            'bm25': 0.3,
-            'embedding': 0.3,
-            'education': 0.2,
-            'skills': 0.1,
-            'experience': 0.1
-        }
-        """
-        if weights is None:
-            weights = {
-                'bm25': 0.3,
-                'embedding': 0.3,
-                'education': 0.2,
-                'skills': 0.1,
-                'experience': 0.1
-            }
-        
+    def search_for_candidate(
+        self, 
+        profile: Dict[str, Any], 
+        top_k: int = 10
+    ) -> pd.DataFrame:
+        """Mode 1: Cari jabatan untuk kandidat"""
         results = self.df.copy()
         
-        # 1. BM25 Scoring
-        bm25_scores = self._get_bm25_scores(profile)
+        # Filter 1: Pendidikan
+        user_edu = profile.get('pendidikan_terakhir', '')
+        user_rank = get_education_rank(user_edu)
         
-        # 2. Embedding Scoring
-        embedding_scores = self._get_embedding_scores(profile)
+        results['edu_rank'] = results['kualifikasi_tingkat_pendidikan'].apply(get_education_rank)
+        results = results[results['edu_rank'] <= user_rank]
         
-        # 3. Education Matching
-        education_scores = self._get_education_scores(profile)
+        # Filter 2: Provinsi
+        if profile.get('provinsi_penempatan') and profile['provinsi_penempatan'] != 'Semua':
+            results = results[results['provinsi'] == profile['provinsi_penempatan'].upper()]
         
-        # 4. Skills Matching
-        skills_scores = self._get_skills_scores(profile)
+        # Filter 3: Salary
+        if profile.get('gaji_minimum', 0) > 0:
+            results = results[results['gaji_max'] >= profile['gaji_minimum']]
         
-        # 5. Experience Matching
-        experience_scores = self._get_experience_scores(profile)
+        if len(results) == 0:
+            return pd.DataFrame()
         
-        # Combine scores
-        final_scores = (
-            weights.get('bm25', 0.3) * bm25_scores +
-            weights.get('embedding', 0.3) * embedding_scores +
-            weights.get('education', 0.2) * education_scores +
-            weights.get('skills', 0.1) * skills_scores +
-            weights.get('experience', 0.1) * experience_scores
-        )
+        # Scoring: Semantic similarity
+        if self.embeddings is not None and self.model is not None:
+            query_text = self._build_candidate_query(profile)
+            query_emb = self.model.encode([query_text])[0]
+            
+            filtered_indices = results.index.tolist()
+            filtered_embeddings = self.embeddings[filtered_indices]
+            
+            # Cosine similarity (normalized to 0-1)
+            from sklearn.metrics.pairwise import cosine_similarity
+            similarities = cosine_similarity([query_emb], filtered_embeddings)[0]
+            results['match_score'] = similarities
+        else:
+            results['match_score'] = results['search_text'].apply(
+                lambda x: self._keyword_match_score(x, profile)
+            )
         
-        results['match_score'] = final_scores
-        results['bm25_score'] = bm25_scores
-        results['embedding_score'] = embedding_scores
-        results['education_score'] = education_scores
-        results['skills_score'] = skills_scores
-        results['experience_score'] = experience_scores
+        # Ensure match_score is between 0 and 1
+        results['match_score'] = results['match_score'].clip(0, 1)
         
-        # Sort and return top-k
         results = results.sort_values('match_score', ascending=False).head(top_k)
         return results.reset_index(drop=True)
     
-    def _get_bm25_scores(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Calculate BM25 scores"""
-        if not HAS_BM25 or self.bm25_index is None:
-            return np.zeros(len(self.df))
+    def search_for_job_requirement(
+        self, 
+        requirement: Dict[str, Any], 
+        top_k: int = 10
+    ) -> pd.DataFrame:
+        """Mode 2: Cari jabatan yang sesuai dengan kebutuhan instansi"""
+        results = self.df.copy()
         
-        query_text = self._build_query_text(profile)
-        query_tokens = tokenize_id(query_text)
-        
-        if not query_tokens:
-            return np.zeros(len(self.df))
-        
-        scores = self.bm25_index.get_scores(query_tokens)
-        return MinMaxScaler().fit_transform(scores.reshape(-1, 1)).flatten()
-    
-    def _get_embedding_scores(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Calculate embedding similarity scores"""
-        if not HAS_SBERT or self.embedding_model is None or self.embeddings is None:
-            return np.zeros(len(self.df))
-        
-        query_text = self._build_query_text(profile)
-        query_embedding = self.embedding_model.encode([query_text])[0]
-        
-        similarities = cosine_similarity([query_embedding], self.embeddings)[0]
-        return MinMaxScaler().fit_transform(similarities.reshape(-1, 1)).flatten()
-    
-    def _get_education_scores(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Calculate education matching scores"""
-        user_edu = profile.get("pendidikan_terakhir", "")
-        user_jurusan = profile.get("jurusan", "")
-        user_level = get_education_level(user_edu)
-        
-        scores = []
-        for _, row in self.df.iterrows():
-            required_edu = str(row.get("kualifikasi_pendidikan", ""))
-            required_level = get_education_level(required_edu)
-            
-            # Level matching
-            if user_level >= required_level:
-                level_score = 1.0
-            elif user_level == required_level - 0.5:  # e.g., D3 vs S1
-                level_score = 0.7
-            else:
-                level_score = 0.3
-            
-            # Jurusan matching (fuzzy)
-            jurusan_score = 0.5
-            if user_jurusan and HAS_FUZZY:
-                fuzzy_score = fuzz.partial_ratio(
-                    user_jurusan.lower(), 
-                    required_edu.lower()
-                ) / 100.0
-                jurusan_score = fuzzy_score
-            
-            final_score = 0.6 * level_score + 0.4 * jurusan_score
-            scores.append(final_score)
-        
-        return np.array(scores)
-    
-    def _get_skills_scores(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Calculate skills matching scores"""
-        user_skills = profile.get("hard_skills", []) + profile.get("soft_skills", [])
-        user_skills = [s.lower() for s in user_skills]
-        user_skills_expanded = expand_skills(user_skills)
-        
-        scores = []
-        for _, row in self.df.iterrows():
-            required_skills = str(row.get("persyaratan_kompetensi", "")).lower()
-            
-            if not required_skills:
-                scores.append(0.5)
-                continue
-            
-            # Count matches
-            matches = sum(1 for skill in user_skills_expanded if skill in required_skills)
-            score = min(matches / max(len(user_skills), 1), 1.0)
-            scores.append(score)
-        
-        return np.array(scores)
-    
-    def _get_experience_scores(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Calculate experience matching scores"""
-        user_exp = profile.get("pengalaman_kerja", "")
-        user_exp_lower = user_exp.lower()
-        
-        scores = []
-        for _, row in self.df.iterrows():
-            job_desc = str(row.get("tugas_pokok", "")).lower()
-            
-            if not job_desc or not user_exp:
-                scores.append(0.5)
-                continue
-            
-            # Simple keyword matching
-            exp_tokens = set(tokenize_id(user_exp_lower))
-            job_tokens = set(tokenize_id(job_desc))
-            
-            if exp_tokens and job_tokens:
-                overlap = len(exp_tokens & job_tokens)
-                score = min(overlap / len(exp_tokens), 1.0)
-                scores.append(score)
-            else:
-                scores.append(0.5)
-        
-        return np.array(scores)
-    
-    def _build_query_text(self, profile: Dict[str, Any]) -> str:
-        """Build comprehensive query text dari profile"""
-        parts = []
-        
-        # Pendidikan & Jurusan
-        if profile.get("pendidikan_terakhir"):
-            parts.append(profile["pendidikan_terakhir"])
-        if profile.get("jurusan"):
-            parts.append(profile["jurusan"])
-        
-        # Skills
-        if profile.get("hard_skills"):
-            parts.extend(profile["hard_skills"])
-        if profile.get("soft_skills"):
-            parts.extend(profile["soft_skills"])
-        
-        # Minat & Preferensi
-        if profile.get("minat_bidang"):
-            parts.extend(profile["minat_bidang"])
-        if profile.get("preferensi_kerja"):
-            parts.extend(profile["preferensi_kerja"])
-        
-        # Pengalaman (keywords)
-        if profile.get("pengalaman_kerja"):
-            exp_keywords = tokenize_id(profile["pengalaman_kerja"])
-            parts.extend(exp_keywords[:10])
-        
-        return " ".join(parts)
-
-
-# ---------------------------
-# LLM Reranker (FIXED)
-# ---------------------------
-
-class LLMReranker:
-    """LLM-based reranking dengan Gemini - FIXED VERSION"""
-    
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
-        """
-        Args:
-            api_key: Gemini API key
-            model_name: Model Gemini yang digunakan
-        """
-        if not HAS_GEMINI:
-            raise ImportError("Google Generative AI library tidak tersedia. Install: pip install google-generativeai")
-        
-        if not api_key or api_key.strip() == "":
-            raise ValueError("API key tidak boleh kosong!")
-        
-        try:
-            genai.configure(api_key=api_key)
-            self.client = genai.GenerativeModel(model_name)
-            self.model_name = model_name
-            self.api_key = api_key
-        except Exception as e:
-            raise Exception(f"Gagal menginisialisasi Gemini: {str(e)}")
-    
-    def generate_overall_summary(self, profile: Dict[str, Any], top_results: pd.DataFrame, top_n: int = 5) -> Dict[str, Any]:
-        """Generate overall summary untuk top N recommendations"""
-        
-        # Ambil top N jabatan
-        top_jobs = top_results.head(top_n)
-        
-        # Build ringkasan jabatan
-        jobs_summary = []
-        for idx, row in top_jobs.iterrows():
-            jobs_summary.append({
-                'judul': row.get('judul_jabatan', '-'),
-                'instansi': row.get('instansi', '-'),
-                'score': row.get('match_score', 0) * 100,
-                'kualifikasi': row.get('kualifikasi_pendidikan', '-')
-            })
-        
-        prompt = self._build_summary_prompt(profile, jobs_summary)
-        
-        try:
-            safety_settings = [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        # Filter: Pendidikan
+        req_edu = requirement.get('pendidikan_terakhir', '')
+        if req_edu:
+            results = results[
+                results['kualifikasi_tingkat_pendidikan'].str.contains(req_edu, case=False, na=False)
             ]
+        
+        if len(results) == 0:
+            return pd.DataFrame()
+        
+        # Scoring: Semantic similarity
+        if self.embeddings is not None and self.model is not None:
+            query_text = requirement.get('uraian_kebutuhan', '') + ' ' + \
+                         requirement.get('uraian_pekerjaan', '')
+            query_emb = self.model.encode([query_text])[0]
             
-            response = self.client.generate_content(
-                prompt,
+            filtered_indices = results.index.tolist()
+            filtered_embeddings = self.embeddings[filtered_indices]
+            
+            # Cosine similarity (normalized to 0-1)
+            from sklearn.metrics.pairwise import cosine_similarity
+            similarities = cosine_similarity([query_emb], filtered_embeddings)[0]
+            results['match_score'] = similarities
+        else:
+            results['match_score'] = results['search_text'].apply(
+                lambda x: self._keyword_match_score(x, requirement)
+            )
+        
+        # Ensure match_score is between 0 and 1
+        results['match_score'] = results['match_score'].clip(0, 1)
+        
+        results = results.sort_values('match_score', ascending=False).head(top_k)
+        return results.reset_index(drop=True)
+    
+    def _build_candidate_query(self, profile: Dict[str, Any]) -> str:
+        """Build query text dari profil kandidat"""
+        parts = [
+            profile.get('pendidikan_terakhir', ''),
+            profile.get('jurusan', ''),
+            profile.get('pengalaman_kerja', ''),
+            profile.get('pekerjaan_diharapkan', '')
+        ]
+        return ' '.join([p for p in parts if p])
+    
+    def _keyword_match_score(self, text: str, profile: Dict[str, Any]) -> float:
+        """Simple keyword matching fallback"""
+        keywords = self._build_candidate_query(profile).lower().split()
+        text = text.lower()
+        matches = sum(1 for kw in keywords if kw in text)
+        return matches / max(len(keywords), 1)
+
+# ==================== AI CHATBOT ====================
+
+class GeminiChatbot:
+    """Interactive chatbot dengan Gemini AI"""
+    
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+        if not HAS_GEMINI:
+            raise ImportError("Install: pip install google-generativeai")
+        
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(model_name)
+        self.chat_history = []
+        self.context = {}
+    
+    def set_context(self, profile: Dict, results: pd.DataFrame, mode: str):
+        """Set context untuk chatbot"""
+        self.context = {
+            'profile': profile,
+            'results': results.to_dict('records'),
+            'mode': mode
+        }
+    
+    def chat(self, user_message: str) -> str:
+        """Process chat message"""
+        system_prompt = self._build_system_prompt()
+        full_prompt = f"{system_prompt}\n\nUser: {user_message}\nAssistant:"
+        
+        try:
+            response = self.model.generate_content(
+                full_prompt,
                 generation_config={
-                    'temperature': 0.4,
-                    'max_output_tokens': 800,
-                    'top_p': 0.95,
+                    'temperature': 0.7,
+                    'max_output_tokens': 1000,
                 },
-                safety_settings=safety_settings
+                safety_settings=[
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                ]
             )
             
-            # Cek response validity
-            if not response or not response.candidates:
-                return {
-                    'summary': "Tidak dapat menghasilkan analisis AI saat ini (no response).",
-                    'strengths': [],
-                    'development_areas': [],
-                    'recommendations': []
-                }
-            
-            if response.candidates[0].finish_reason != 1:
-                finish_reason_map = {
-                    0: "Unspecified",
-                    2: "Max tokens",
-                    3: "Safety filter",
-                    4: "Recitation",
-                    5: "Other"
-                }
-                reason = finish_reason_map.get(response.candidates[0].finish_reason, "Unknown")
-                return {
-                    'summary': f"Response blocked: {reason}. Coba lagi atau gunakan model berbeda.",
-                    'strengths': [],
-                    'development_areas': [],
-                    'recommendations': []
-                }
-            
-            content = response.text
-            return self._parse_summary_response(content)
-            
-        except Exception as e:
-            error_msg = str(e)
-            if "API_KEY_INVALID" in error_msg or "401" in error_msg:
-                return {
-                    'summary': "API key tidak valid. Silakan periksa kembali API key Anda.",
-                    'strengths': [],
-                    'development_areas': [],
-                    'recommendations': []
-                }
+            if response and response.text:
+                assistant_reply = response.text
+                self.chat_history.append({
+                    'user': user_message,
+                    'assistant': assistant_reply
+                })
+                return assistant_reply
             else:
-                return {
-                    'summary': f"Error: {error_msg}",
-                    'strengths': [],
-                    'development_areas': [],
-                    'recommendations': []
-                }
-
-    def _build_summary_prompt(self, profile: Dict[str, Any], jobs_summary: List[Dict]) -> str:
-        """Build prompt untuk overall summary"""
+                return "Maaf, saya tidak dapat memproses pertanyaan Anda saat ini."
+                
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    def _build_system_prompt(self) -> str:
+        """Build system prompt dengan context"""
+        mode = self.context.get('mode', 'candidate')
         
-        # Format jobs list
-        jobs_text = "\n".join([
-            f"{i+1}. {job['judul']} - {job['instansi']} (Score: {job['score']:.1f}%)"
-            for i, job in enumerate(jobs_summary)
-        ])
-        
-        # Get skills dengan fallback
-        hard_skills = profile.get('hard_skills', [])
-        soft_skills = profile.get('soft_skills', [])
-        minat = profile.get('minat_bidang', [])
-        
-        hard_skills_str = ', '.join(hard_skills[:8]) if hard_skills else 'Tidak disebutkan'
-        soft_skills_str = ', '.join(soft_skills[:5]) if soft_skills else 'Tidak disebutkan'
-        minat_str = ', '.join(minat[:3]) if minat else 'Tidak disebutkan'
-        
-        return f"""
-Sebagai expert recruiter PNS, berikan analisis mendalam untuk kandidat berikut:
+        if mode == 'candidate':
+            profile = self.context.get('profile', {})
+            results = self.context.get('results', [])[:5]
+            
+            results_text = "\n".join([
+                f"{i+1}. {r.get('nama_jabatan', '-')} - {r.get('eselon_1_penempatan', '-')} "
+                f"(Score: {r.get('match_score', 0):.2f})"
+                for i, r in enumerate(results)
+            ])
+            
+            return f"""
+Anda adalah asisten AI untuk rekomendasi jabatan CASN.
 
 PROFIL KANDIDAT:
-- Pendidikan: {profile.get('pendidikan_terakhir', '-')} - {profile.get('jurusan', '-')}
-- IPK: {profile.get('ipk', '-')}
-- Hard Skills: {hard_skills_str}
-- Soft Skills: {soft_skills_str}
-- Minat: {minat_str}
+- Pendidikan: {profile.get('pendidikan_terakhir', '-')}
+- Jurusan: {profile.get('jurusan', '-')}
+- Provinsi: {profile.get('provinsi_penempatan', '-')}
 
-TOP REKOMENDASI JABATAN:
-{jobs_text}
+TOP REKOMENDASI:
+{results_text}
 
-Berikan analisis dalam format JSON:
-{{
-"summary": "<ringkasan 2-3 kalimat tentang kecocokan kandidat dengan jabatan-jabatan tersebut>",
-"strengths": ["<kekuatan 1>", "<kekuatan 2>", "<kekuatan 3>"],
-"development_areas": ["<area pengembangan 1>", "<area pengembangan 2>"],
-"recommendations": ["<saran 1>", "<saran 2>", "<saran 3>"]
-}}
+Tugas Anda:
+- Jawab pertanyaan kandidat tentang jabatan yang direkomendasikan
+- Berikan detail tugas & fungsi jabatan
+- Bandingkan antar jabatan jika diminta
+- Saran provinsi lain jika ada formasi serupa
+- Berikan insight tentang peluang kerja lapangan/kantor
+
+Jawab dalam bahasa Indonesia yang ramah dan profesional.
+"""
+        else:
+            requirement = self.context.get('profile', {})
+            results = self.context.get('results', [])[:5]
+            
+            results_text = "\n".join([
+                f"{i+1}. {r.get('nama_jabatan', '-')}"
+                for i, r in enumerate(results)
+            ])
+            
+            return f"""
+Anda adalah asisten AI untuk rekomendasi kebutuhan pegawai.
+
+KEBUTUHAN INSTANSI:
+- Pendidikan: {requirement.get('pendidikan_terakhir', '-')}
+- Uraian: {requirement.get('uraian_kebutuhan', '-')}
+
+JABATAN YANG COCOK:
+{results_text}
+
+Tugas Anda:
+- Jelaskan mengapa jabatan tersebut cocok
+- Jelaskan tugas & fungsi tiap jabatan
+- Bandingkan kemampuan antar jabatan
+
+Jawab dalam bahasa Indonesia yang profesional.
 """
 
-    def _parse_summary_response(self, content: str) -> Dict[str, Any]:
-        """Parse overall summary response"""
-        try:
-            # Extract JSON
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-                return {
-                    'summary': data.get('summary', ''),
-                    'strengths': data.get('strengths', []),
-                    'development_areas': data.get('development_areas', []),
-                    'recommendations': data.get('recommendations', [])
-                }
-        except Exception:
-            pass
-        
-        # Fallback
-        return {
-            'summary': content[:300] if content else "Tidak dapat menghasilkan summary",
-            'strengths': [],
-            'development_areas': [],
-            'recommendations': []
-        }
+# ==================== VISUALISASI ====================
 
-
-# ---------------------------
-# Visualization
-# ---------------------------
-
-def plot_match_scores(df: pd.DataFrame, top_n: int = 10, key_suffix: str = ""):
-    """Plot match scores dengan breakdown"""
-    if not HAS_PLOTLY:
-        st.warning("Plotly tidak tersedia untuk visualisasi")
+def plot_top_matches(df: pd.DataFrame, key_suffix: str = ""):
+    """Plot top matches score"""
+    if not HAS_PLOTLY or len(df) == 0:
         return
     
-    df_plot = df.head(top_n).copy()
-    df_plot['jabatan_short'] = df_plot['judul_jabatan'].apply(
+    df_plot = df.head(10).copy()
+    df_plot['jabatan_short'] = df_plot['nama_jabatan'].apply(
         lambda x: x[:40] + '...' if len(x) > 40 else x
     )
     
-    # Stacked bar chart untuk score breakdown
-    fig = go.Figure()
-    
-    score_components = ['bm25_score', 'embedding_score', 'education_score', 
-                       'skills_score', 'experience_score']
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
-    
-    for component, color in zip(score_components, colors):
-        if component in df_plot.columns:
-            fig.add_trace(go.Bar(
-                name=component.replace('_', ' ').title(),
-                x=df_plot['jabatan_short'],
-                y=df_plot[component] * 100,
-                marker_color=color
-            ))
-    
-    fig.update_layout(
-        title="Score Breakdown per Jabatan",
-        xaxis_title="Jabatan",
-        yaxis_title="Score (%)",
-        barmode='stack',
-        height=400
+    fig = px.bar(
+        df_plot,
+        x='match_score',
+        y='jabatan_short',
+        orientation='h',
+        title='Top 10 Matches',
+        labels={'match_score': 'Match Score', 'jabatan_short': 'Jabatan'},
+        color='match_score',
+        color_continuous_scale='viridis'
     )
-    
-    st.plotly_chart(fig, use_container_width=True, key=f"match_scores_{key_suffix}")
+    fig.update_layout(yaxis={'categoryorder': 'total ascending'}, height=400)
+    st.plotly_chart(fig, use_container_width=True, key=f"top_matches_{key_suffix}")
 
+def show_statistics_dashboard(stats: Dict):
+    """Dashboard statistik"""
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Jabatan", stats.get('total_jabatan', 0))
+    with col2:
+        st.metric("Total Formasi", stats.get('total_formasi', 0))
+    with col3:
+        st.metric("Total Instansi", stats.get('total_instansi', 0))
+    with col4:
+        st.metric("Provinsi", stats.get('provinsi_count', 0))
+    
+    # Jenjang pendidikan chart
+    if 'jenjang_pendidikan' in stats and HAS_PLOTLY:
+        df_edu = pd.DataFrame(
+            list(stats['jenjang_pendidikan'].items()),
+            columns=['Jenjang', 'Jumlah']
+        )
+        fig = px.pie(df_edu, values='Jumlah', names='Jenjang', 
+                     title='Distribusi Jenjang Pendidikan',
+                     hole=0.4)
+        st.plotly_chart(fig, use_container_width=True, key="edu_dist")
 
-def plot_radar_chart(scores: Dict[str, float], key_suffix: str = ""):
-    """Plot radar chart untuk score breakdown"""
-    if not HAS_PLOTLY:
-        return
-    
-    categories = list(scores.keys())
-    values = [scores[k] * 100 for k in categories]
-    
-    fig = go.Figure()
-    
-    fig.add_trace(go.Scatterpolar(
-        r=values,
-        theta=categories,
-        fill='toself',
-        name='Scores'
-    ))
-    
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 100]
-            )),
-        showlegend=False,
-        height=300
-    )
-    
-    st.plotly_chart(fig, use_container_width=True, key=f"radar_{key_suffix}")
+# ==================== CHATBOT UI COMPONENT ====================
 
-
-# ---------------------------
-# Export Functions
-# ---------------------------
-
-def export_to_excel(results: pd.DataFrame, profile: Dict[str, Any]) -> bytes:
-    """Export hasil ke Excel"""
-    output = io.BytesIO()
+def render_chatbot_section(chatbot, mode: str, chat_key: str):
+    """Render chatbot section untuk mode tertentu"""
     
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet 1: Profil
-        df_profile = pd.DataFrame([{
-            'Pendidikan': profile.get('pendidikan_terakhir', '-'),
-            'Jurusan': profile.get('jurusan', '-'),
-            'IPK': profile.get('ipk', '-'),
-            'Hard Skills': ', '.join(profile.get('hard_skills', [])),
-            'Soft Skills': ', '.join(profile.get('soft_skills', [])),
-        }])
-        df_profile.to_excel(writer, sheet_name='Profil', index=False)
+    st.divider()
+    st.subheader("💬 AI Assistant - Tanya Jawab")
+    
+    # Tips berdasarkan mode
+    with st.expander("💡 Tips Pertanyaan"):
+        if mode == 'candidate':
+            st.markdown("""
+            - Bisakah berikan uraian lebih detail tentang jabatan nomor 1?
+            - Kalau di provinsi lain apakah ada formasi lagi?
+            - Apakah benar tidak ada kemungkinan saya bekerja di lapangan jika memilih jabatan nomor 1?
+            - Bandingkan jabatan nomor 1 dan nomor 3, mana yang lebih cocok untuk saya?
+            - Apa saja skill yang harus saya tingkatkan untuk jabatan nomor 2?
+            """)
+        else:
+            st.markdown("""
+            - Jabatan nomor 3 juga bisa bantu untuk mengelola keuangan?
+            - Apa perbedaan tugas antara jabatan nomor 1 dan nomor 2?
+            - Jabatan mana yang lebih fokus ke pekerjaan teknis?
+            - Apakah jabatan nomor 1 cocok untuk pekerjaan lapangan?
+            """)
+    
+    # Chat container
+    chat_container = st.container()
+    
+    # Display chat history
+    with chat_container:
+        for i, msg in enumerate(chatbot.chat_history):
+            with st.chat_message("user"):
+                st.write(msg['user'])
+            with st.chat_message("assistant"):
+                st.write(msg['assistant'])
+    
+    # Chat input
+    user_input = st.chat_input("Tanyakan sesuatu...", key=f"chat_input_{chat_key}")
+    
+    if user_input:
+        # Add user message to history
+        with chat_container:
+            with st.chat_message("user"):
+                st.write(user_input)
+            
+            # Get AI response
+            with st.chat_message("assistant"):
+                with st.spinner("🤔 Berpikir..."):
+                    response = chatbot.chat(user_input)
+                    st.write(response)
         
-        # Sheet 2: Results
-        export_cols = ['judul_jabatan', 'instansi', 'unit_organisasi', 
-                      'kualifikasi_pendidikan', 'match_score', 
-                      'bm25_score', 'embedding_score', 'education_score',
-                      'skills_score', 'experience_score']
-        
-        df_export = results[export_cols].copy()
-        df_export['match_score'] = (df_export['match_score'] * 100).round(2)
-        
-        for col in ['bm25_score', 'embedding_score', 'education_score', 'skills_score', 'experience_score']:
-            if col in df_export.columns:
-                df_export[col] = (df_export[col] * 100).round(2)
-        
-        df_export.to_excel(writer, sheet_name='Rekomendasi', index=False)
-    
-    output.seek(0)
-    return output.getvalue()
+        st.rerun()
 
-
-def save_search_history(profile: Dict[str, Any], results: pd.DataFrame):
-    """Simpan riwayat pencarian"""
-    history_entry = {
-        'timestamp': datetime.now().isoformat(),
-        'profile_summary': f"{profile.get('pendidikan_terakhir', '-')} - {profile.get('jurusan', '-')}",
-        'results_count': len(results),
-        'top_match': results.iloc[0]['judul_jabatan'] if len(results) > 0 else '-',
-        'top_score': float(results.iloc[0]['match_score']) if len(results) > 0 else 0
-    }
-    
-    # Load existing history
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, 'r') as f:
-            history = json.load(f)
-    else:
-        history = []
-    
-    history.append(history_entry)
-    
-    # Save
-    with open(HISTORY_FILE, 'w') as f:
-        json.dump(history[-100:], f, indent=2)  # Keep last 100 entries
-
-
-def save_feedback(jabatan: str, is_positive: bool, profile: Dict[str, Any]):
-    """Simpan feedback untuk learning"""
-    feedback_data = {
-        'timestamp': datetime.now().isoformat(),
-        'jabatan': jabatan,
-        'is_positive': is_positive,
-        'profile_snapshot': json.dumps(profile)
-    }
-    
-    if os.path.exists(FEEDBACK_FILE):
-        df_feedback = pd.read_csv(FEEDBACK_FILE)
-        df_feedback = pd.concat([df_feedback, pd.DataFrame([feedback_data])], ignore_index=True)
-    else:
-        df_feedback = pd.DataFrame([feedback_data])
-    
-    df_feedback.to_csv(FEEDBACK_FILE, index=False)
-
-
-# ---------------------------
-# Main App (FIXED)
-# ---------------------------
-
+# ==================== MAIN APP ====================
 
 def main():
-    # Header
-    st.title("🧭 Smart PNS Job Recommender")
-    st.markdown("**Sistem Rekomendasi Jabatan PNS dengan AI & Machine Learning**")
+    st.title("CASN Expert Recommendation and Decision Assistance System")
+    st.markdown("**Sistem Rekomendasi Jabatan dan Kebutuhan Formasi**")
     
-    # Sidebar
+    # Sidebar: Settings
     with st.sidebar:
-        st.header("⚙️ Konfigurasi")
+        st.header("🎯 CERDAS")
         
-        # ========================================
-        # FIXED: Gemini API Key Configuration
-        # ========================================
-        gemini_api_key = None
-        use_llm = False
-        
-        # 1. Coba ambil dari secrets.toml
-        try:
-            gemini_api_key = st.secrets["GEMINI_API_KEY"]
-            if gemini_api_key and gemini_api_key.strip():
-                st.success("✅ API Key ditemukan di secrets.toml")
-        except:
-            pass
-        
-        # 2. Jika tidak ada di secrets, coba dari environment variable
-        if not gemini_api_key:
-            gemini_api_key = os.getenv("GEMINI_API_KEY")
-            if gemini_api_key and gemini_api_key.strip():
-                st.success("✅ API Key ditemukan di environment variable")
-        
-        # 3. Jika masih tidak ada, beri opsi input manual
-        if not gemini_api_key:
-            st.warning("⚠️ Gemini API Key tidak ditemukan")
-            st.markdown("Dapatkan API key gratis di: [Google AI Studio](https://makersuite.google.com/app/apikey)")
-            
-            gemini_api_key = st.text_input(
-                "Masukkan Gemini API Key",
-                type="password",
-                help="API key akan digunakan untuk fitur AI Analysis"
-            )
-        
-        # 4. Validasi dan aktifkan fitur AI
-        if gemini_api_key and gemini_api_key.strip() and HAS_GEMINI:
-            use_llm = st.checkbox(
-                "🤖 Aktifkan Gemini AI Analysis", 
-                value=True,
-                help="Menggunakan Gemini untuk analisis mendalam hasil rekomendasi"
-            )
-            
-            if use_llm:
-                # Pilihan model Gemini
-                gemini_model = st.selectbox(
-                    "Model Gemini",
-                    ["gemini-2.0-flash-exp","gemini-2.5-flash"],
-                    index=0,
-                    help="Flash = cepat & murah, Pro = lebih akurat"
-                )
-                
-                # Test connection
-                with st.spinner("Testing API connection..."):
-                    try:
-                        genai.configure(api_key=gemini_api_key)
-                        test_model = genai.GenerativeModel(gemini_model)
-                        test_response = test_model.generate_content("Hello")
-                        st.success(f"✅ Gemini AI siap! Model: {gemini_model}")
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-                        st.info("Periksa kembali API key Anda atau coba model lain")
-                        use_llm = False
-            else:
-                gemini_model = "gemini-1.5-flash"
-        else:
-            use_llm = False
-            gemini_model = "gemini-1.5-flash"
-            if not HAS_GEMINI:
-                st.info("📦 Install library: pip install google-generativeai")
+        top_k = st.slider("Jumlah Rekomendasi", 5, 30, 10, 5)
         
         st.divider()
         
-        # Search weights
-        st.subheader("⚖️ Bobot Pencarian")
-        weight_bm25 = st.slider("BM25 (keyword)", 0.0, 1.0, 0.3, 0.05)
-        weight_embedding = st.slider("Embedding (semantic)", 0.0, 1.0, 0.3, 0.05)
-        weight_education = st.slider("Pendidikan", 0.0, 1.0, 0.2, 0.05)
-        weight_skills = st.slider("Skills", 0.0, 1.0, 0.1, 0.05)
-        weight_experience = st.slider("Pengalaman", 0.0, 1.0, 0.1, 0.05)
-        
-        weights = {
-            'bm25': weight_bm25,
-            'embedding': weight_embedding,
-            'education': weight_education,
-            'skills': weight_skills,
-            'experience': weight_experience
-        }
-        
-        # Normalize weights
-        total = sum(weights.values())
-        if total > 0:
-            weights = {k: v/total for k, v in weights.items()}
-        
-        st.info(f"Total bobot: {sum(weights.values()):.2f}")
-        
-        # Top-K
-        top_k = st.number_input("Jumlah Rekomendasi", 5, 50, 20, 5)
+        # System status
+        st.subheader("📊 Status Sistem")
+        if 'data_initialized' in st.session_state and st.session_state.data_initialized:
+            st.success("✅ Data siap")
+            if 'search_engine' in st.session_state and st.session_state.search_engine:
+                if st.session_state.search_engine.embeddings is not None:
+                    st.success("✅ AI Search aktif")
+                else:
+                    st.info("ℹ️ Keyword search aktif")
+        else:
+            st.warning("⚠️ Memuat data...")
     
-    # Tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Dashboard", "📁 Data Management", "👤 Profil Kandidat", 
-        "🎯 Hasil Rekomendasi", "📈 Analytics"
-    ])
-    
-    # Initialize session state
+    # Initialize Session State
     if 'data_manager' not in st.session_state:
-        st.session_state.data_manager = DataManager()
+        st.session_state.data_manager = CASNDataManager()
     if 'search_engine' not in st.session_state:
         st.session_state.search_engine = None
-    if 'profile' not in st.session_state:
-        st.session_state.profile = {}
     if 'results' not in st.session_state:
         st.session_state.results = None
+    if 'data_initialized' not in st.session_state:
+        st.session_state.data_initialized = False
     
-    # Tab 1: Dashboard
-    with tab1:
+    # Get Gemini API Key (dari environment atau secrets)
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    try:
+        gemini_api_key = st.secrets.get("GEMINI_API_KEY", gemini_api_key)
+    except:
+        pass
+    
+    use_ai = bool(gemini_api_key and HAS_GEMINI)
+    
+    # Auto-load data pada startup (hanya sekali) - SILENT
+    if not st.session_state.data_initialized:
+        if st.session_state.data_manager.auto_load_from_folder():
+            search_engine = HybridSearchEngine(st.session_state.data_manager.df_merged)
+            
+            if HAS_SBERT:
+                search_engine.build_embeddings()
+            
+            st.session_state.search_engine = search_engine
+            st.session_state.data_initialized = True
+    
+    # Tabs
+    tabs = st.tabs([
+        "📊 Dashboard",
+        "🧑‍💼 Kandidat → Jabatan",
+        "🏢 Instansi → Pegawai"
+    ])
+    
+    # TAB 1: Dashboard
+    with tabs[0]:
         st.header("📊 Dashboard Overview")
         
-        if st.session_state.data_manager.df is not None:
+        if st.session_state.data_manager.df_merged is not None:
             stats = st.session_state.data_manager.get_statistics()
+            show_statistics_dashboard(stats)
             
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Jabatan", stats.get('total_jabatan', 0))
-            with col2:
-                st.metric("Total Instansi", stats.get('total_instansi', 0))
-            with col3:
-                st.metric("Total Formasi", stats.get('total_formasi', 0))
-            
-            # Top Education
-            if 'top_education' in stats:
-                st.subheader("📚 Top 10 Kualifikasi Pendidikan")
-                df_edu = pd.DataFrame(list(stats['top_education'].items()), 
-                                     columns=['Pendidikan', 'Jumlah'])
-                st.bar_chart(df_edu.set_index('Pendidikan'))
-            
-            # Top Locations
-            if 'top_locations' in stats:
-                st.subheader("📍 Top 10 Lokasi Penempatan")
-                df_loc = pd.DataFrame(list(stats['top_locations'].items()), 
-                                     columns=['Lokasi', 'Jumlah'])
-                st.bar_chart(df_loc.set_index('Lokasi'))
+            # Preview data
+            with st.expander("👁️ Preview Data Jabatan"):
+                st.dataframe(
+                    st.session_state.data_manager.df_merged[
+                        ['nama_jabatan', 'eselon_1_penempatan', 'kualifikasi_tingkat_pendidikan', 
+                         'provinsi', 'alokasi_kebutuhan']
+                    ].head(20),
+                    use_container_width=True
+                )
         else:
-            st.info("Silakan upload data di tab 'Data Management' terlebih dahulu")
+            st.error("❌ Data tidak ditemukan di folder assets/data")
+            st.info("💡 Pastikan file CSV ada di folder assets/data dengan format yang benar")
     
-    # Tab 2: Data Management
-    with tab2:
-        st.header("📁 Data Management")
+    # TAB 2: Mode 1 - Kandidat → Jabatan
+    with tabs[1]:
+        st.header("🧑‍💼 Cari Jabatan untuk Kandidat")
         
-        # Upload atau generate template
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            uploaded_file = st.file_uploader(
-                "Upload CSV Data Jabatan",
-                type=['csv'],
-                help="Format CSV dengan kolom: judul_jabatan, instansi, unit_organisasi, dst"
-            )
-            
-            if uploaded_file:
-                with st.spinner("Loading data..."):
-                    df = st.session_state.data_manager.load_data(uploaded_file=uploaded_file)
-                    
-                    if df is not None:
-                        # Build indexes
-                        st.info("Building search indexes...")
-                        search_engine = HybridSearchEngine(df)
-                        
-                        if HAS_BM25:
-                            search_engine.bm25_index, search_engine.corpus_tokens = \
-                                search_engine.build_bm25_index(st.session_state.data_manager.data_hash)
-                        
-                        if HAS_SBERT:
-                            search_engine.embedding_model, search_engine.embeddings = \
-                                search_engine.build_embeddings(st.session_state.data_manager.data_hash)
-                        
-                        st.session_state.search_engine = search_engine
-                        st.success("✅ Data dan search engine siap!")
-        
-        with col2:
-            st.subheader("Generate Template CSV")
-            
-            if st.button("📥 Download Template"):
-                template_cols = [
-                    "judul_jabatan", "instansi", "unit_organisasi",
-                    "kualifikasi_pendidikan", "persyaratan_kompetensi",
-                    "tugas_pokok", "fungsi_jabatan", "jumlah_formasi",
-                    "lokasi_penempatan", "kode_formasi", "tautan_detail"
-                ]
-                df_template = pd.DataFrame(columns=template_cols)
+        if st.session_state.search_engine is None:
+            st.warning("⚠️ Data belum tersedia")
+        else:
+            with st.form("candidate_form"):
+                st.subheader("📝 Formulir Kandidat")
                 
-                # Add sample row
-                df_template.loc[0] = [
-                    "Analis Kebijakan Publik",
-                    "Kementerian Dalam Negeri",
-                    "Direktorat Jenderal Otonomi Daerah",
-                    "S1 Administrasi Publik/Ilmu Pemerintahan",
-                    "Analisis Kebijakan, Komunikasi, MS Office",
-                    "Menganalisis kebijakan otonomi daerah",
-                    "Perencanaan dan evaluasi kebijakan",
-                    5,
-                    "Jakarta",
-                    "FORM-2025-001",
-                    "https://example.com/formasi/001"
-                ]
+                col1, col2 = st.columns(2)
                 
-                csv = df_template.to_csv(index=False)
-                st.download_button(
-                    "💾 Download Template CSV",
-                    csv,
-                    "template_jabatan_pns.csv",
-                    "text/csv"
-                )
-        
-        # Show data preview
-        if st.session_state.data_manager.df is not None:
-            st.subheader("Preview Data")
-            st.dataframe(
-                st.session_state.data_manager.df.head(100),
-                use_container_width=True,
-                height=400
-            )
-    
-    # Tab 3: Profil Kandidat
-    with tab3:
-        st.header("👤 Profil Kandidat")
-        
-        with st.form("profile_form"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Pendidikan")
-                pendidikan = st.selectbox(
-                    "Pendidikan Terakhir*",
-                    ["", "SMA/SMK", "D3", "D4/S1", "S2", "S3"],
-                    help="Jenjang pendidikan terakhir"
-                )
-                jurusan = st.text_input("Jurusan*", help="Contoh: Teknik Informatika")
-                ipk = st.number_input("IPK", 0.0, 4.0, 0.0, 0.01, help="Opsional")
+                with col1:
+                    pendidikan = st.selectbox("Tingkat Pendidikan Terakhir*", JENJANG_PENDIDIKAN, index=7)
+                    jurusan = st.text_input(
+                        "Jurusan*",
+                        placeholder="Contoh: Teknik Informatika, Akuntansi"
+                    )
+                    instansi = st.text_area(
+                        "Instansi (opsional)",
+                        placeholder="Detail eselon 1-3 jika ada preferensi tertentu",
+                        height=80
+                    )
                 
-                st.subheader("Kompetensi")
-                hard_skills = st.text_area(
-                    "Hard Skills*",
-                    help="Pisahkan dengan koma. Contoh: Python, Data Analysis, SQL"
-                )
-                soft_skills = st.text_area(
-                    "Soft Skills*",
-                    help="Pisahkan dengan koma. Contoh: Komunikasi, Leadership, Problem Solving"
-                )
-                sertifikasi = st.text_area(
-                    "Sertifikasi",
-                    help="Pisahkan dengan koma. Contoh: PMP, CISCO, AWS"
-                )
-            
-            with col2:
-                st.subheader("Preferensi")
-                minat_bidang = st.text_area(
-                    "Minat Bidang*",
-                    help="Pisahkan dengan koma. Contoh: Teknologi Informasi, Kebijakan Publik"
-                )
-                preferensi_kerja = st.text_area(
-                    "Preferensi Kerja*",
-                    help="Pisahkan dengan koma. Contoh: Remote, Jakarta, Tim Kecil"
-                )
+                with col2:
+                    gaji_min = st.number_input(
+                        "Preferensi Pendapatan Bulanan (Min)",
+                        min_value=0,
+                        value=5000000,
+                        step=500000,
+                        format="%d"
+                    )
+                    provinsi = st.selectbox(
+                        "Preferensi Lokasi Penempatan",
+                        ["Semua"] + PROVINSI_INDONESIA
+                    )
                 
-                st.subheader("Pengalaman")
                 pengalaman = st.text_area(
-                    "Pengalaman Kerja*",
-                    help="Deskripsikan pengalaman kerja relevan Anda (3-5 kalimat)",
-                    height=150
-                )
-                
-                st.subheader("Nilai Pribadi")
-                nilai_pribadi = st.text_area(
-                    "Nilai Pribadi",
-                    help="Contoh: Integritas, Inovasi, Pelayanan Publik",
+                    "Pengalaman Bekerja*",
+                    placeholder="Uraian pengalaman bekerja yang pernah dilakukan...\nContoh: Saya pernah bekerja sebagai admin call center yang banyak berkomunikasi dengan pengguna...",
                     height=100
                 )
+                
+                pekerjaan_diharapkan = st.text_area(
+                    "Pekerjaan yang Diharapkan*",
+                    placeholder="Uraian jenis pekerjaan seperti apa yang ingin dipenuhi...\nContoh: Saya mengharapkan pekerjaan yang tidak terlalu banyak teknis pakai komputer, lebih suka kerja yang di lapangan...",
+                    height=100
+                )
+                
+                submit_candidate = st.form_submit_button("🔍 Cari Rekomendasi Jabatan", use_container_width=True)
             
-            submitted = st.form_submit_button("💾 Simpan Profil", use_container_width=True)
-            
-            if submitted:
-                # Validasi
-                if not all([pendidikan, jurusan, hard_skills, soft_skills, 
-                           minat_bidang, preferensi_kerja, pengalaman]):
-                    st.error("❌ Mohon lengkapi semua field yang bertanda *")
+            if submit_candidate:
+                if not all([jurusan, pengalaman, pekerjaan_diharapkan]):
+                    st.error("❌ Mohon lengkapi field yang bertanda *")
                 else:
                     profile = {
                         'pendidikan_terakhir': pendidikan,
                         'jurusan': jurusan,
-                        'ipk': ipk if ipk > 0 else None,
-                        'hard_skills': [s.strip() for s in hard_skills.split(',') if s.strip()],
-                        'soft_skills': [s.strip() for s in soft_skills.split(',') if s.strip()],
-                        'sertifikasi': [s.strip() for s in sertifikasi.split(',') if s.strip()],
-                        'minat_bidang': [s.strip() for s in minat_bidang.split(',') if s.strip()],
-                        'preferensi_kerja': [s.strip() for s in preferensi_kerja.split(',') if s.strip()],
+                        'instansi': instansi,
+                        'gaji_minimum': gaji_min,
+                        'provinsi_penempatan': provinsi if provinsi != "Semua" else None,
                         'pengalaman_kerja': pengalaman,
-                        'nilai_pribadi': nilai_pribadi
+                        'pekerjaan_diharapkan': pekerjaan_diharapkan
                     }
                     
-                    st.session_state.profile = profile
-                    st.success("✅ Profil berhasil disimpan!")
+                    with st.spinner("🔍 Mencari rekomendasi terbaik..."):
+                        results = st.session_state.search_engine.search_for_candidate(profile, top_k)
+                        st.session_state.results = results
+                        st.session_state.current_mode = 'candidate'
+                        st.session_state.current_profile = profile
+                        
+                        # Initialize chatbot
+                        if use_ai:
+                            try:
+                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.5-flash")
+                                chatbot.set_context(profile, results, 'candidate')
+                                st.session_state.chatbot_mode1 = chatbot
+                            except Exception as e:
+                                st.session_state.chatbot_mode1 = None
                     
-                    # Show summary
-                    with st.expander("📋 Ringkasan Profil"):
-                        st.json(profile)
+                    if len(results) > 0:
+                        st.success(f"✅ Ditemukan {len(results)} rekomendasi jabatan!")
+                        
+                        # Visualisasi
+                        if HAS_PLOTLY:
+                            plot_top_matches(results, "candidate")
+                        
+                        st.divider()
+                        
+                        # Display Results
+                        st.subheader("📋 Daftar Rekomendasi Jabatan")
+                        
+                        for idx, row in results.iterrows():
+                            with st.expander(
+                                f"#{idx+1} — {row['nama_jabatan']} "
+                                f"(Match: {row['match_score']:.2%})",
+                                expanded=(idx < 3)
+                            ):
+                                col_a, col_b = st.columns([2, 1])
+                                
+                                with col_a:
+                                    st.markdown(f"**🏢 Instansi:** {row.get('eselon_1_penempatan', '-')}")
+                                    st.markdown(f"**📍 Unit:** {row.get('eselon_2_penempatan', '-')}")
+                                    if row.get('eselon_3_penempatan', '-') != '-':
+                                        st.markdown(f"**📍 Sub-unit:** {row.get('eselon_3_penempatan', '-')}")
+                                    st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
+                                    st.markdown(f"**👥 Alokasi:** {row.get('alokasi_kebutuhan', 0)} orang")
+                                    
+                                    # Kualifikasi
+                                    st.markdown("**🎓 Kualifikasi Pendidikan:**")
+                                    # Format kualifikasi dengan koma
+                                    kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
+                                    if '\n' in str(kualifikasi):
+                                        kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
+                                    st.info(kualifikasi)
+                                    
+                                    # Rentang Gaji
+                                    if row.get('gaji_min', 0) > 0:
+                                        st.markdown(
+                                            f"**💰 Rentang Penghasilan:** "
+                                            f"{format_currency(row['gaji_min'])} - {format_currency(row['gaji_max'])}"
+                                        )
+                                
+                                with col_b:
+                                    st.markdown("**📊 Match Score**")
+                                    st.metric("Overall", f"{row['match_score']:.1%}")
+                                
+                                # Tugas & Fungsi
+                                if pd.notna(row.get('deskripsi_tugas_pokok')):
+                                    with st.expander("📋 Tugas Pokok & Fungsi"):
+                                        st.markdown("**Tugas Pokok:**")
+                                        st.write(row.get('deskripsi_tugas_pokok', '-'))
+                                        
+                                        if pd.notna(row.get('rincian_kegiatan_fungsi')):
+                                            st.markdown("**Rincian Kegiatan:**")
+                                            kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
+                                            for line in kegiatan.split(';'):
+                                                if line.strip():
+                                                    st.markdown(f"- {line.strip()}")
+                        
+                        # Export button
+                        if len(results) > 0:
+                            st.divider()
+                            csv = results.to_csv(index=False)
+                            st.download_button(
+                                "📥 Download Hasil (CSV)",
+                                csv,
+                                f"rekomendasi_kandidat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                "text/csv",
+                                key="export_candidate"
+                            )
+                        
+                        # Chatbot Section
+                        if use_ai and 'chatbot_mode1' in st.session_state and st.session_state.chatbot_mode1:
+                            render_chatbot_section(st.session_state.chatbot_mode1, 'candidate', 'mode1')
+                        elif not use_ai:
+                            st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY di environment atau .env file")
+                    else:
+                        st.warning("❌ Tidak ditemukan jabatan yang sesuai. Coba ubah filter pencarian.")
     
-    # Tab 4: Hasil Rekomendasi
-    with tab4:
-        st.header("🎯 Hasil Rekomendasi")
+    # TAB 3: Mode 2 - Instansi → Pegawai
+    with tabs[2]:
+        st.header("🏢 Cari Jabatan untuk Kebutuhan Instansi")
         
-        if not st.session_state.profile:
-            st.warning("⚠️ Silakan lengkapi profil di tab 'Profil Kandidat' terlebih dahulu")
-        elif st.session_state.search_engine is None:
-            st.warning("⚠️ Silakan upload data di tab 'Data Management' terlebih dahulu")
+        if st.session_state.search_engine is None:
+            st.warning("⚠️ Data belum tersedia")
         else:
-            # Di tab "🎯 Hasil Rekomendasi", bagian tombol search
-            if st.button("🔍 Cari Rekomendasi Jabatan", type="primary", use_container_width=True):
-                with st.spinner("Memproses rekomendasi..."):
-                    # Hybrid search
-                    results = st.session_state.search_engine.search(
-                        st.session_state.profile,
-                        top_k=top_k,
-                        weights=weights
+            with st.form("job_requirement_form"):
+                st.subheader("📝 Formulir Kebutuhan Pegawai")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    req_pendidikan = st.selectbox(
+                        "Tingkat Pendidikan*",
+                        JENJANG_PENDIDIKAN,
+                        index=7,
+                        key='req_edu'
                     )
-                    
-                    st.session_state.results = results
-                    
-                    # Save history
-                    save_search_history(st.session_state.profile, results)
-                    
-                    st.success(f"✅ Ditemukan {len(results)} rekomendasi jabatan!")
-                    
-                    if use_llm:
-                        st.info("💡 Scroll ke bawah untuk melihat AI Analysis Summary")   
-                        
-                        
-            # Display results
-            if st.session_state.results is not None and len(st.session_state.results) > 0:
-                results = st.session_state.results
                 
-                # Score breakdown visualization
-                if HAS_PLOTLY:
-                    plot_match_scores(results, min(10, len(results)), key_suffix="main")
-                
-                # Export button
-                col1, col2 = st.columns([3, 1])
                 with col2:
-                    excel_data = export_to_excel(results, st.session_state.profile)
-                    st.download_button(
-                        "📥 Export ke Excel",
-                        excel_data,
-                        f"rekomendasi_jabatan_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                    st.write("")  # Spacer
                 
-                st.divider()
+                uraian_kebutuhan = st.text_area(
+                    "Uraian Kebutuhan Pekerjaan yang Ingin Dipenuhi*",
+                    placeholder="Contoh: Membutuhkan pegawai untuk mengelola sistem informasi, "
+                                "membuat aplikasi web, maintenance server, dan dokumentasi teknis...",
+                    height=150,
+                    key='req_desc'
+                )
                 
-                # ========================================
-                # AI ANALYSIS SUMMARY (Hanya sekali di sini) - FIXED
-                # ========================================
-                if use_llm and gemini_api_key:
-                    st.subheader("🤖 AI Analysis Summary")
-                    
-                    with st.spinner("Menghasilkan analisis mendalam dengan Gemini AI..."):
-                        try:
-                            llm_reranker = LLMReranker(
-                                api_key=gemini_api_key,
-                                model_name=gemini_model
-                            )
-                            
-                            ai_summary = llm_reranker.generate_overall_summary(
-                                st.session_state.profile,
-                                results,
-                                top_n=5
-                            )
-                            
-                            # Display summary
-                            if ai_summary.get('summary'):
-                                col_sum1, col_sum2 = st.columns([2, 1])
-                                
-                                with col_sum1:
-                                    # Overall summary
-                                    st.markdown("**📊 Analisis Kecocokan:**")
-                                    summary_text = ai_summary.get('summary', 'Tidak ada analisis tersedia')
-                                    
-                                    # Check for error messages
-                                    if "Error" in summary_text or "blocked" in summary_text or "invalid" in summary_text.lower():
-                                        st.error(summary_text)
-                                    else:
-                                        st.info(summary_text)
-                                    
-                                    # Strengths
-                                    if ai_summary.get('strengths'):
-                                        st.markdown("**✨ Kekuatan Kandidat:**")
-                                        for strength in ai_summary['strengths']:
-                                            st.success(f"✓ {strength}")
-                                
-                                with col_sum2:
-                                    # Development areas
-                                    if ai_summary.get('development_areas'):
-                                        st.markdown("**📈 Area Pengembangan:**")
-                                        for area in ai_summary['development_areas']:
-                                            st.warning(f"• {area}")
-                                
-                                # Recommendations
-                                if ai_summary.get('recommendations'):
-                                    st.markdown("**💡 Rekomendasi Aksi:**")
-                                    for i, rec in enumerate(ai_summary['recommendations'], 1):
-                                        st.markdown(f"{i}. {rec}")
-                            else:
-                                st.warning("Tidak dapat menghasilkan AI analysis. Silakan coba lagi.")
-                            
-                        except ValueError as ve:
-                            st.error(f"❌ {str(ve)}")
-                            st.info("Pastikan API key Anda valid dan aktif.")
-                        except Exception as e:
-                            st.error(f"❌ Gagal menghasilkan AI analysis: {str(e)}")
-                            st.info("Coba refresh halaman atau gunakan model Gemini yang berbeda.")
-                    
-                    st.divider()
+                uraian_pekerjaan = st.text_area(
+                    "Uraian Jenis Pekerjaan yang Diharapkan*",
+                    placeholder="Contoh: Pekerjaan lebih banyak di lapangan atau di kantor, "
+                                "banyak interaksi dengan masyarakat atau lebih ke teknis...",
+                    height=100,
+                    key='req_job'
+                )
                 
-                # ========================================
-                # RESULTS DISPLAY (Tanpa AI per item)
-                # ========================================
-                st.subheader(f"Top {len(results)} Rekomendasi")
-                
-                for idx, row in results.iterrows():
-                    with st.expander(
-                        f"#{idx+1} — {row['judul_jabatan']} "
-                        f"(Score: {row['match_score']*100:.1f}%)",
-                        expanded=(idx < 3)
-                    ):
-                        col1, col2 = st.columns([2, 1])
-                        
-                        with col1:
-                            st.markdown(f"**Instansi:** {row.get('instansi', '-')}")
-                            st.markdown(f"**Unit:** {row.get('unit_organisasi', '-')}")
-                            st.markdown(f"**Lokasi:** {row.get('lokasi_penempatan', '-')}")
-                            st.markdown(f"**Formasi:** {row.get('jumlah_formasi', '-')}")
-                            
-                            # Kualifikasi
-                            st.markdown("**Kualifikasi:**")
-                            st.info(row.get('kualifikasi_pendidikan', '-'))
-                            
-                            # Kompetensi
-                            if pd.notna(row.get('persyaratan_kompetensi')):
-                                st.markdown("**Kompetensi:**")
-                                st.info(row.get('persyaratan_kompetensi', '-'))
-                            
-                            # Tupoksi
-                            if pd.notna(row.get('tugas_pokok')):
-                                with st.expander("📋 Tugas Pokok"):
-                                    st.write(row.get('tugas_pokok', '-'))
-                        
-                        with col2:
-                            # Score breakdown
-                            st.markdown("**Score Breakdown:**")
-                            
-                            scores_to_show = {
-                                'Match': row['match_score'],
-                                'BM25': row.get('bm25_score', 0),
-                                'Embedding': row.get('embedding_score', 0),
-                                'Education': row.get('education_score', 0),
-                                'Skills': row.get('skills_score', 0),
-                                'Experience': row.get('experience_score', 0)
-                            }
-                            
-                            if HAS_PLOTLY:
-                                plot_radar_chart(scores_to_show, key_suffix=f"result_{idx}")
-                            else:
-                                for key, val in scores_to_show.items():
-                                    st.metric(key, f"{val*100:.1f}%")
-                        
-                        # Feedback buttons
-                        col_fb1, col_fb2, col_fb3 = st.columns([1, 1, 4])
-                        with col_fb1:
-                            if st.button("👍 Cocok", key=f"pos_{idx}"):
-                                save_feedback(row['judul_jabatan'], True, st.session_state.profile)
-                                st.success("Terima kasih atas feedback Anda!")
-                        with col_fb2:
-                            if st.button("👎 Tidak Cocok", key=f"neg_{idx}"):
-                                save_feedback(row['judul_jabatan'], False, st.session_state.profile)
-                                st.info("Feedback tersimpan!")    
-    
-    # Tab 5: Analytics
-    with tab5:
-        st.header("📈 Analytics & Insights")
-        
-        # Search history
-        if os.path.exists(HISTORY_FILE):
-            st.subheader("📜 Riwayat Pencarian")
+                submit_requirement = st.form_submit_button(
+                    "🔍 Cari Rekomendasi Jabatan",
+                    use_container_width=True
+                )
             
-            with open(HISTORY_FILE, 'r') as f:
-                history = json.load(f)
-            
-            if history:
-                df_history = pd.DataFrame(history)
-                df_history['timestamp'] = pd.to_datetime(df_history['timestamp'])
-                
-                st.dataframe(df_history[['timestamp', 'results_count', 'top_match', 'top_score']], 
-                        use_container_width=True)
-                
-                # Trend chart dengan key unik
-                if HAS_PLOTLY and len(df_history) > 1:
-                    fig = px.line(df_history, x='timestamp', y='top_score',
-                                title='Trend Score Tertinggi')
-                    st.plotly_chart(fig, use_container_width=True, key="analytics_trend")
-        
-        # Feedback analysis
-        if os.path.exists(FEEDBACK_FILE):
-            st.subheader("💬 Feedback Analysis")
-            
-            df_feedback = pd.read_csv(FEEDBACK_FILE)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                positive = df_feedback['is_positive'].sum()
-                total = len(df_feedback)
-                st.metric("Positive Feedback", f"{positive}/{total}", 
-                        f"{positive/total*100:.1f}%" if total > 0 else "0%")
-            
-            with col2:
-                st.metric("Total Feedback", total)
-            
-            # Top rated jabatan dengan key unik
-            if total > 0:
-                top_jabatan = df_feedback[df_feedback['is_positive']] \
-                    .groupby('jabatan').size().sort_values(ascending=False).head(10)
-                
-                st.markdown("**Top 10 Jabatan (Most Positive Feedback):**")
-                
-                # Gunakan st.bar_chart atau plotly dengan key
-                if HAS_PLOTLY:
-                    fig = px.bar(x=top_jabatan.index, y=top_jabatan.values,
-                                labels={'x': 'Jabatan', 'y': 'Count'})
-                    st.plotly_chart(fig, use_container_width=True, key="analytics_feedback")
+            if submit_requirement:
+                if not all([uraian_kebutuhan, uraian_pekerjaan]):
+                    st.error("❌ Mohon lengkapi field yang bertanda *")
                 else:
-                    st.bar_chart(top_jabatan)
+                    requirement = {
+                        'pendidikan_terakhir': req_pendidikan,
+                        'uraian_kebutuhan': uraian_kebutuhan,
+                        'uraian_pekerjaan': uraian_pekerjaan
+                    }
+                    
+                    with st.spinner("🔍 Mencari jabatan yang sesuai..."):
+                        results = st.session_state.search_engine.search_for_job_requirement(
+                            requirement, top_k
+                        )
+                        st.session_state.results = results
+                        st.session_state.current_mode = 'job_requirement'
+                        st.session_state.current_profile = requirement
+                        
+                        # Initialize chatbot
+                        if use_ai:
+                            try:
+                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.5-flash")
+                                chatbot.set_context(requirement, results, 'job_requirement')
+                                st.session_state.chatbot_mode2 = chatbot
+                            except Exception as e:
+                                st.session_state.chatbot_mode2 = None
+                    
+                    if len(results) > 0:
+                        st.success(f"✅ Ditemukan {len(results)} jabatan yang cocok!")
+                        
+                        # Visualisasi
+                        if HAS_PLOTLY:
+                            plot_top_matches(results, "requirement")
+                        
+                        st.divider()
+                        
+                        # Display Results
+                        st.subheader("📋 Daftar Jabatan yang Sesuai")
+                        
+                        for idx, row in results.iterrows():
+                            with st.expander(
+                                f"#{idx+1} — {row['nama_jabatan']} "
+                                f"(Match: {row['match_score']:.2%})",
+                                expanded=(idx < 3)
+                            ):
+                                st.markdown(f"**🎓 Kualifikasi:** {row.get('kualifikasi_tingkat_pendidikan', '-')}")
+                                # Format kualifikasi dengan koma
+                                kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
+                                if '\n' in str(kualifikasi):
+                                    kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
+                                st.markdown(f"**📚 Jurusan:** {kualifikasi}")
+                                
+                                # Rangkuman Tugas & Fungsi
+                                st.markdown("**📋 Rangkuman Tugas & Fungsi:**")
+                                
+                                if pd.notna(row.get('deskripsi_tugas_pokok')):
+                                    st.info(row.get('deskripsi_tugas_pokok', '-'))
+                                
+                                if pd.notna(row.get('rincian_kegiatan_fungsi')):
+                                    with st.expander("Lihat Rincian Kegiatan"):
+                                        kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
+                                        for line in kegiatan.split(';'):
+                                            if line.strip():
+                                                st.markdown(f"- {line.strip()}")
+                                
+                                # Informasi Formasi
+                                st.markdown("---")
+                                col_x, col_y = st.columns(2)
+                                with col_x:
+                                    st.markdown(f"**🏢 Instansi:** {row.get('eselon_1_penempatan', '-')}")
+                                    st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
+                                with col_y:
+                                    st.markdown(f"**👥 Formasi:** {row.get('alokasi_kebutuhan', 0)} orang")
+                                    if row.get('gaji_min', 0) > 0:
+                                        st.markdown(
+                                            f"**💰 Gaji:** {format_currency(row['gaji_min'])} - "
+                                            f"{format_currency(row['gaji_max'])}"
+                                        )
+                        
+                        # Export
+                        if len(results) > 0:
+                            st.divider()
+                            csv = results.to_csv(index=False)
+                            st.download_button(
+                                "📥 Download Hasil (CSV)",
+                                csv,
+                                f"rekomendasi_jabatan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                "text/csv",
+                                key="export_requirement"
+                            )
+                        
+                        # Chatbot Section
+                        if use_ai and 'chatbot_mode2' in st.session_state and st.session_state.chatbot_mode2:
+                            render_chatbot_section(st.session_state.chatbot_mode2, 'job_requirement', 'mode2')
+                        elif not use_ai:
+                            st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY di environment atau .env file")
+                    else:
+                        st.warning("❌ Tidak ditemukan jabatan yang sesuai.")
 
-# ---------------------------
-# Run App
-# ---------------------------
 
 if __name__ == "__main__":
     main()
