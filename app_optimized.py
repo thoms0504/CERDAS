@@ -1,19 +1,7 @@
-"""
-Smart CASN Bidirectional Recommender System
-============================================
-Fitur Utama:
-1. Auto-load data dari folder assets/data
-2. Rekomendasi Jabatan untuk Kandidat (Candidate → Job Matching)
-3. Rekomendasi Pegawai untuk Instansi (Job → Candidate Matching)  
-4. Integrated AI Chatbot di setiap mode
-
-Run: streamlit run app_casn_v2.py
-"""
-
-import os
 import re
 import json
 import glob
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
@@ -48,11 +36,294 @@ except ImportError:
 
 # ==================== KONFIGURASI ====================
 st.set_page_config(
-    page_title="CERDAS",
+    page_title="CERDAS - Smart CASN System",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ==================== CUSTOM CSS ====================
+def load_custom_css():
+    """Load custom CSS untuk UI yang lebih menarik"""
+    st.markdown("""
+    <style>
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+    
+    /* Global Styles */
+    * {
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    /* Main Header Styling */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+    
+    .main-header h1 {
+        color: white;
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .main-header p {
+        color: #f0f0f0;
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+    }
+    
+    /* Metric Cards */
+    div[data-testid="metric-container"] {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    div[data-testid="metric-container"]:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    div[data-testid="metric-container"] label {
+        color: white !important;
+        font-weight: 600 !important;
+    }
+    
+    div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+        color: white !important;
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
+        padding: 0.5rem;
+        border-radius: 10px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        background-color: white;
+        border-radius: 8px;
+        color: #764ba2;
+        font-weight: 600;
+        padding: 0 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #f5f5f5;
+        transform: scale(1.05);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Form Styling */
+    .stForm {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    
+    /* Input Fields */
+    .stTextInput input, .stTextArea textarea, .stSelectbox select, .stNumberInput input {
+        border-radius: 10px !important;
+        border: 2px solid #e0e0e0 !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox select:focus, .stNumberInput input:focus {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+    }
+    
+    /* Buttons */
+    .stButton button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Download Button */
+    .stDownloadButton button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .stDownloadButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Success/Error/Info Messages */
+    .stSuccess, .stError, .stWarning, .stInfo {
+        border-radius: 10px;
+        padding: 1rem;
+        font-weight: 500;
+    }
+    
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: white;
+    }
+    
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3 {
+        color: white !important;
+    }
+    
+    /* Chat Messages */
+    .stChatMessage {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        border-radius: 15px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Divider */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+    }
+    
+    /* Dataframe */
+    .stDataFrame {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Animation for loading */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .stSpinner > div {
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    /* Section Headers */
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        margin: 1.5rem 0 1rem 0;
+        font-weight: 600;
+        font-size: 1.3rem;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Info Box Custom */
+    .custom-info-box {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 5px solid #667eea;
+        margin: 1rem 0;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Card Container */
+    .card-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        margin: 1rem 0;
+        transition: transform 0.3s ease;
+    }
+    
+    .card-container:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    /* Badge */
+    .badge {
+        display: inline-block;
+        padding: 0.35rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.25rem;
+    }
+    
+    .badge-success {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .badge-info {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #764ba2;
+    }
+    
+    /* Pulse Animation for New Features */
+    @keyframes glow {
+        0%, 100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.8); }
+    }
+    
+    .glow {
+        animation: glow 2s ease-in-out infinite;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 CACHE_DIR = Path("cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -303,7 +574,7 @@ class HybridSearchEngine:
         requirement: Dict[str, Any], 
         top_k: int = 10
     ) -> pd.DataFrame:
-        """Mode 2: Cari jabatan yang sesuai dengan kebutuhan instansi"""
+        """Mode 2: Cari jabatan yang sesuai dengan kebutuhan instansi - HANYA UNIQUE JABATAN"""
         results = self.df.copy()
         
         # Filter: Pendidikan
@@ -319,13 +590,12 @@ class HybridSearchEngine:
         # Scoring: Semantic similarity
         if self.embeddings is not None and self.model is not None:
             query_text = requirement.get('uraian_kebutuhan', '') + ' ' + \
-                         requirement.get('uraian_pekerjaan', '')
+                        requirement.get('uraian_pekerjaan', '')
             query_emb = self.model.encode([query_text])[0]
             
             filtered_indices = results.index.tolist()
             filtered_embeddings = self.embeddings[filtered_indices]
             
-            # Cosine similarity (normalized to 0-1)
             from sklearn.metrics.pairwise import cosine_similarity
             similarities = cosine_similarity([query_emb], filtered_embeddings)[0]
             results['match_score'] = similarities
@@ -334,11 +604,27 @@ class HybridSearchEngine:
                 lambda x: self._keyword_match_score(x, requirement)
             )
         
-        # Ensure match_score is between 0 and 1
         results['match_score'] = results['match_score'].clip(0, 1)
         
-        results = results.sort_values('match_score', ascending=False).head(top_k)
-        return results.reset_index(drop=True)
+        # PERUBAHAN: Group by nama_jabatan dan ambil match_score tertinggi
+        results_grouped = results.groupby('nama_jabatan').agg({
+            'match_score': 'max',  # Ambil skor tertinggi
+            'kualifikasi_tingkat_pendidikan': 'first',
+            'kualifikasi_program_studi_jurusan': 'first',
+            'deskripsi_tugas_pokok': 'first',
+            'rincian_kegiatan_fungsi': 'first',
+            'eselon_1_penempatan': lambda x: ', '.join(x.unique()[:3]),  # Gabung max 3 instansi
+            'eselon_2_penempatan': 'first',
+            'eselon_3_penempatan': 'first',
+            'lokasi': lambda x: f"{x.nunique()} lokasi",  # Hitung jumlah lokasi
+            'alokasi_kebutuhan': 'sum',  # Total formasi dari semua lokasi
+            'gaji_min': 'min',
+            'gaji_max': 'max',
+            'rentang_penghasilan': 'first'
+        }).reset_index()
+        
+        results_grouped = results_grouped.sort_values('match_score', ascending=False).head(top_k)
+        return results_grouped.reset_index(drop=True)
     
     def _build_candidate_query(self, profile: Dict[str, Any]) -> str:
         """Build query text dari profil kandidat"""
@@ -357,258 +643,729 @@ class HybridSearchEngine:
         matches = sum(1 for kw in keywords if kw in text)
         return matches / max(len(keywords), 1)
 
-# ==================== AI CHATBOT ====================
+# ==================== AI CHATBOT (FIXED) ====================
 
 class GeminiChatbot:
-    """Interactive chatbot dengan Gemini AI"""
+    """Interactive chatbot dengan Gemini AI - OPTIMIZED untuk menghindari quota issues"""
     
-    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-lite"):
         if not HAS_GEMINI:
             raise ImportError("Install: pip install google-generativeai")
         
         genai.configure(api_key=api_key)
+        # PERBAIKAN: Gunakan model yang lebih ringan (gemini-2.0-flash-lite)
         self.model = genai.GenerativeModel(model_name)
         self.chat_history = []
         self.context = {}
     
     def set_context(self, profile: Dict, results: pd.DataFrame, mode: str):
-        """Set context untuk chatbot"""
+        """Set context untuk chatbot - OPTIMIZED"""
+        # PERBAIKAN: Batasi hasil ke top 3 saja untuk menghemat token
         self.context = {
             'profile': profile,
-            'results': results.to_dict('records'),
+            'results': results.head(3).to_dict('records'),  # Hanya ambil top 3
             'mode': mode
         }
     
     def chat(self, user_message: str) -> str:
-        """Process chat message"""
-        system_prompt = self._build_system_prompt()
-        full_prompt = f"{system_prompt}\n\nUser: {user_message}\nAssistant:"
+        """Process chat message - OPTIMIZED"""
+        # PERBAIKAN: Gunakan prompt yang lebih ringkas
+        system_prompt = self._build_compact_system_prompt()
+        
+        # PERBAIKAN: Hanya ambil 2 percakapan terakhir (bukan 3)
+        conversation = system_prompt + "\n\n"
+        for msg in self.chat_history[-2:]:
+            conversation += f"User: {msg['user'][:200]}\nBot: {msg['assistant'][:300]}\n\n"
+        conversation += f"User: {user_message}\nBot:"
         
         try:
             response = self.model.generate_content(
-                full_prompt,
+                conversation,
                 generation_config={
                     'temperature': 0.7,
-                    'max_output_tokens': 1000,
+                    'max_output_tokens': 500,  # PERBAIKAN: Kurangi dari 800 ke 500
+                    'top_p': 0.9,
+                    'top_k': 20,
                 },
                 safety_settings=[
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
                 ]
             )
             
-            if response and response.text:
+            if response and hasattr(response, 'text') and response.text:
                 assistant_reply = response.text
+                # PERBAIKAN: Simpan history dengan batasan panjang
                 self.chat_history.append({
-                    'user': user_message,
-                    'assistant': assistant_reply
+                    'user': user_message[:200],
+                    'assistant': assistant_reply[:500]
                 })
+                # PERBAIKAN: Batasi history maksimal 5 percakapan
+                if len(self.chat_history) > 5:
+                    self.chat_history = self.chat_history[-5:]
                 return assistant_reply
-            else:
-                return "Maaf, saya tidak dapat memproses pertanyaan Anda saat ini."
+            
+            elif response and hasattr(response, 'candidates'):
+                finish_reason = response.candidates[0].finish_reason if response.candidates else None
+                
+                if finish_reason == 1:
+                    return "Maaf, tidak ada response yang dihasilkan."
+                elif finish_reason == 2:
+                    return "Maaf, response terlalu panjang. Coba pertanyaan yang lebih spesifik."
+                elif finish_reason == 3:
+                    return self._retry_with_simpler_prompt(user_message)
+                elif finish_reason == 4:
+                    return "Maaf, tidak dapat memberikan response. Coba formulasikan pertanyaan dengan cara lain."
+                else:
+                    return f"Maaf, terjadi kesalahan (finish_reason: {finish_reason}). Silakan coba lagi."
+            
+            return "Maaf, tidak dapat memproses pertanyaan Anda. Silakan coba lagi."
                 
         except Exception as e:
-            return f"Error: {str(e)}"
+            error_msg = str(e).lower()
+            
+            if 'safety' in error_msg or 'blocked' in error_msg:
+                return self._retry_with_simpler_prompt(user_message)
+            elif 'quota' in error_msg or 'rate' in error_msg or 'resource' in error_msg:
+                return "⚠️ API quota tercapai. Silakan tunggu beberapa saat (~1 menit) dan coba lagi dengan pertanyaan yang lebih ringkas."
+            elif 'invalid' in error_msg:
+                return "⚠️ Format pertanyaan tidak valid. Silakan coba dengan pertanyaan yang lebih sederhana."
+            else:
+                return f"⚠️ Terjadi kesalahan: {str(e)[:150]}"
     
-    def _build_system_prompt(self) -> str:
-        """Build system prompt dengan context"""
+    def _retry_with_simpler_prompt(self, user_message: str) -> str:
+        """Retry dengan prompt yang lebih sederhana jika kena safety filter"""
+        try:
+            simple_prompt = f"""Asisten rekomendasi jabatan CASN.
+
+Pertanyaan: {user_message[:150]}
+
+Jawab singkat dan profesional dalam bahasa Indonesia."""
+            
+            response = self.model.generate_content(
+                simple_prompt,
+                generation_config={
+                    'temperature': 0.7,
+                    'max_output_tokens': 300,  # PERBAIKAN: Lebih pendek lagi
+                },
+                safety_settings=[
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
+                ]
+            )
+            
+            if response and hasattr(response, 'text') and response.text:
+                assistant_reply = response.text
+                self.chat_history.append({
+                    'user': user_message[:200],
+                    'assistant': assistant_reply[:300]
+                })
+                if len(self.chat_history) > 5:
+                    self.chat_history = self.chat_history[-5:]
+                return assistant_reply
+            
+            return "Maaf, saya tidak dapat memproses pertanyaan tersebut. Silakan coba dengan kata-kata yang berbeda."
+            
+        except:
+            return "Maaf, saya tidak dapat memproses pertanyaan tersebut saat ini. Silakan tunggu sebentar dan coba lagi."
+    
+    def _build_compact_system_prompt(self) -> str:
+        """Build system prompt yang RINGKAS untuk menghemat token"""
         mode = self.context.get('mode', 'candidate')
         
         if mode == 'candidate':
             profile = self.context.get('profile', {})
-            results = self.context.get('results', [])[:5]
+            results = self.context.get('results', [])
             
+            # PERBAIKAN: Hanya tampilkan info minimal
             results_text = "\n".join([
-                f"{i+1}. {r.get('nama_jabatan', '-')} - {r.get('eselon_1_penempatan', '-')} "
-                f"(Score: {r.get('match_score', 0):.2f})"
+                f"{i+1}. {r.get('nama_jabatan', '-')[:60]} ({r.get('match_score', 0):.0%})"
                 for i, r in enumerate(results)
             ])
             
-            return f"""
-Anda adalah asisten AI untuk rekomendasi jabatan CASN.
+            return f"""Asisten rekomendasi jabatan CASN.
 
-PROFIL KANDIDAT:
-- Pendidikan: {profile.get('pendidikan_terakhir', '-')}
-- Jurusan: {profile.get('jurusan', '-')}
-- Provinsi: {profile.get('provinsi_penempatan', '-')}
+PROFIL: {profile.get('pendidikan_terakhir', '-')}, {profile.get('jurusan', '-')}
 
-TOP REKOMENDASI:
+TOP 3:
 {results_text}
 
-Tugas Anda:
-- Jawab pertanyaan kandidat tentang jabatan yang direkomendasikan
-- Berikan detail tugas & fungsi jabatan
-- Bandingkan antar jabatan jika diminta
-- Saran provinsi lain jika ada formasi serupa
-- Berikan insight tentang peluang kerja lapangan/kantor
-
-Jawab dalam bahasa Indonesia yang ramah dan profesional.
-"""
-        else:
+Jawab singkat, fokus, dan informatif."""
+        
+        else:  # job_requirement mode
             requirement = self.context.get('profile', {})
-            results = self.context.get('results', [])[:5]
+            results = self.context.get('results', [])
             
+            # PERBAIKAN: Format lebih ringkas untuk mode 2
             results_text = "\n".join([
-                f"{i+1}. {r.get('nama_jabatan', '-')}"
+                f"{i+1}. {r.get('nama_jabatan', '-')[:60]} ({r.get('match_score', 0):.0%})"
                 for i, r in enumerate(results)
             ])
             
-            return f"""
-Anda adalah asisten AI untuk rekomendasi kebutuhan pegawai.
+            # PERBAIKAN: Potong deskripsi kebutuhan jika terlalu panjang
+            kebutuhan = requirement.get('uraian_kebutuhan', '-')[:150]
+            
+            return f"""Asisten analisis jabatan CASN.
 
-KEBUTUHAN INSTANSI:
-- Pendidikan: {requirement.get('pendidikan_terakhir', '-')}
-- Uraian: {requirement.get('uraian_kebutuhan', '-')}
+KEBUTUHAN: {requirement.get('pendidikan_terakhir', '-')}
+{kebutuhan}
 
-JABATAN YANG COCOK:
+TOP 3:
 {results_text}
 
-Tugas Anda:
-- Jelaskan mengapa jabatan tersebut cocok
-- Jelaskan tugas & fungsi tiap jabatan
-- Bandingkan kemampuan antar jabatan
-
-Jawab dalam bahasa Indonesia yang profesional.
-"""
+Jawab singkat dan objektif."""
 
 # ==================== VISUALISASI ====================
 
 def plot_top_matches(df: pd.DataFrame, key_suffix: str = ""):
-    """Plot top matches score"""
+    """Plot top matches score dengan format label yang lebih informatif"""
     if not HAS_PLOTLY or len(df) == 0:
         return
     
     df_plot = df.head(10).copy()
-    df_plot['jabatan_short'] = df_plot['nama_jabatan'].apply(
-        lambda x: x[:40] + '...' if len(x) > 40 else x
+    
+    # Buat label yang menggabungkan jabatan + eselon 1, 2, 3
+    def create_label(row):
+        labels = []
+        
+        # Jabatan (potong jika terlalu panjang)
+        jabatan = row['nama_jabatan']
+        if len(jabatan) > 50:
+            jabatan = jabatan[:47] + '...'
+        labels.append(f"<b>{jabatan}</b>")
+        
+        # Eselon 1
+        if pd.notna(row.get('eselon_1_penempatan')):
+            eselon1 = str(row['eselon_1_penempatan'])
+            if len(eselon1) > 50:
+                eselon1 = eselon1[:47] + '...'
+            labels.append(f"Eselon 1: {eselon1}")
+        
+        # Eselon 2
+        if pd.notna(row.get('eselon_2_penempatan')):
+            eselon2 = str(row['eselon_2_penempatan'])
+            if len(eselon2) > 50:
+                eselon2 = eselon2[:47] + '...'
+            labels.append(f"Eselon 2: {eselon2}")
+        
+        # Eselon 3
+        if pd.notna(row.get('eselon_3_penempatan')) and str(row.get('eselon_3_penempatan')) != '-':
+            eselon3 = str(row['eselon_3_penempatan'])
+            if len(eselon3) > 50:
+                eselon3 = eselon3[:47] + '...'
+            labels.append(f"Eselon 3: {eselon3}")
+        
+        return '<br>'.join(labels)
+    
+    df_plot['label_lengkap'] = df_plot.apply(create_label, axis=1)
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=df_plot['label_lengkap'],
+        y=df_plot['match_score'],
+        text=[f"{score:.1%}" for score in df_plot['match_score']],
+        textposition='outside',
+        marker=dict(
+            color=df_plot['match_score'],
+            colorscale='Viridis',
+            showscale=True,
+            colorbar=dict(title="Skor Kecocokan")
+        ),
+        hovertemplate='<b>%{x}</b><br>Skor Kecocokan: %{y:.2%}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title={
+            'text': 'Top 10 Matches - Skor Kecocokan by Position',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 18, 'weight': 'bold'}
+        },
+        xaxis_title='Jabatan & Struktur Organisasi',
+        yaxis_title='Skor Kecocokan',
+        yaxis=dict(
+            tickformat='.0%',
+            range=[0, max(df_plot['match_score'].max() * 1.1, 0.1)]
+        ),
+        xaxis=dict(
+            tickangle=-45,
+            tickfont=dict(size=10)
+        ),
+        height=600,
+        showlegend=False,
+        hovermode='x unified',
+        plot_bgcolor='rgba(240,240,240,0.5)',
+        paper_bgcolor='white'
     )
     
-    fig = px.bar(
-        df_plot,
-        x='match_score',
-        y='jabatan_short',
-        orientation='h',
-        title='Top 10 Matches',
-        labels={'match_score': 'Match Score', 'jabatan_short': 'Jabatan'},
-        color='match_score',
-        color_continuous_scale='viridis'
-    )
-    fig.update_layout(yaxis={'categoryorder': 'total ascending'}, height=400)
     st.plotly_chart(fig, use_container_width=True, key=f"top_matches_{key_suffix}")
 
-def show_statistics_dashboard(stats: Dict):
-    """Dashboard statistik"""
+def show_statistics_dashboard(stats: Dict, df_merged: pd.DataFrame = None):
+    """Dashboard statistik dengan visualisasi lengkap"""
+    
+    # ========== METRIC CARDS ==========
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Jabatan", stats.get('total_jabatan', 0))
+        st.metric("Total Jabatan", f"{stats.get('total_jabatan', 0):,}")
     with col2:
-        st.metric("Total Formasi", stats.get('total_formasi', 0))
+        st.metric("Total Formasi", f"{stats.get('total_formasi', 0):,}")
     with col3:
         st.metric("Total Instansi", stats.get('total_instansi', 0))
     with col4:
         st.metric("Provinsi", stats.get('provinsi_count', 0))
     
-    # Jenjang pendidikan chart
-    if 'jenjang_pendidikan' in stats and HAS_PLOTLY:
-        df_edu = pd.DataFrame(
-            list(stats['jenjang_pendidikan'].items()),
-            columns=['Jenjang', 'Jumlah']
+    if df_merged is None or not HAS_PLOTLY:
+        return
+    
+    st.divider()
+    
+    # ========== ROW 1: Jenjang Pendidikan & Gaji ==========
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        st.subheader("📚 Distribusi Jenjang Pendidikan")
+        if 'jenjang_pendidikan' in stats:
+            df_edu = pd.DataFrame(
+                list(stats['jenjang_pendidikan'].items()),
+                columns=['Jenjang', 'Jumlah']
+            ).sort_values('Jumlah', ascending=False)
+            
+            fig_edu = go.Figure(data=[
+                go.Bar(
+                    x=df_edu['Jenjang'],
+                    y=df_edu['Jumlah'],
+                    text=df_edu['Jumlah'],
+                    textposition='outside',
+                    marker_color='lightblue',
+                    hovertemplate='<b>%{x}</b><br>Jumlah: %{y}<extra></extra>'
+                )
+            ])
+            fig_edu.update_layout(
+                xaxis_title="Jenjang Pendidikan",
+                yaxis_title="Jumlah Formasi",
+                height=400,
+                showlegend=False,
+                hovermode='x'
+            )
+            st.plotly_chart(fig_edu, use_container_width=True, key="edu_bar")
+    
+    with col_right:
+        st.subheader("💰 Distribusi Rentang Gaji")
+        # Buat kategori gaji
+        df_gaji = df_merged[df_merged['gaji_min'] > 0].copy()
+        
+        def kategorikan_gaji(gaji_min):
+            if gaji_min < 3000000:
+                return "< 3 Juta"
+            elif gaji_min < 5000000:
+                return "3-5 Juta"
+            elif gaji_min < 7000000:
+                return "5-7 Juta"
+            elif gaji_min < 10000000:
+                return "7-10 Juta"
+            else:
+                return "> 10 Juta"
+        
+        df_gaji['kategori_gaji'] = df_gaji['gaji_min'].apply(kategorikan_gaji)
+        gaji_count = df_gaji['kategori_gaji'].value_counts().reindex(
+            ["< 3 Juta", "3-5 Juta", "5-7 Juta", "7-10 Juta", "> 10 Juta"],
+            fill_value=0
         )
-        fig = px.pie(df_edu, values='Jumlah', names='Jenjang', 
-                     title='Distribusi Jenjang Pendidikan',
-                     hole=0.4)
-        st.plotly_chart(fig, use_container_width=True, key="edu_dist")
+        
+        fig_gaji = go.Figure(data=[go.Pie(
+            labels=gaji_count.index,
+            values=gaji_count.values,
+            hole=0.4,
+            marker=dict(colors=['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd']),
+            textinfo='label+percent',
+            hovertemplate='<b>%{label}</b><br>Jumlah: %{value}<extra></extra>'
+        )])
+        fig_gaji.update_layout(
+            height=400,
+            showlegend=True,
+            legend=dict(orientation="v", x=1.1, y=0.5)
+        )
+        st.plotly_chart(fig_gaji, use_container_width=True, key="gaji_pie")
+    
+    st.divider()
+    
+    # ========== ROW 2: Chart #1 - Provinsi vs Jumlah Eselon 1 ==========
+    st.subheader("🗺️ Jumlah Instansi per Provinsi")
+    
+    # Hitung jumlah unique eselon 1 per provinsi
+    provinsi_eselon = df_merged.groupby('provinsi')['eselon_1_penempatan'].nunique().reset_index()
+    provinsi_eselon.columns = ['Provinsi', 'Jumlah_Eselon_1']
+    provinsi_eselon = provinsi_eselon.sort_values('Jumlah_Eselon_1', ascending=False).head(15)
+    
+    fig_prov_eselon = go.Figure(data=[
+        go.Bar(
+            x=provinsi_eselon['Provinsi'],
+            y=provinsi_eselon['Jumlah_Eselon_1'],
+            text=provinsi_eselon['Jumlah_Eselon_1'],
+            textposition='outside',
+            marker=dict(
+                color=provinsi_eselon['Jumlah_Eselon_1'],
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(title="Jumlah")
+            ),
+            hovertemplate='<b>%{x}</b><br>Jumlah Instansi: %{y}<extra></extra>'
+        )
+    ])
+    fig_prov_eselon.update_layout(
+        xaxis_title="Provinsi",
+        yaxis_title="Jumlah Instansi (Eselon 1)",
+        height=500,
+        showlegend=False,
+        xaxis=dict(tickangle=-45),
+        hovermode='x'
+    )
+    st.plotly_chart(fig_prov_eselon, use_container_width=True, key="prov_eselon")
+    
+    st.divider()
+    
+    # ========== ROW 3: Chart #2 - Filtered Chart per Provinsi ==========
+    st.subheader("🏢 Jumlah Formasi per Instansi (Filter by Provinsi)")
+    
+    # Dropdown untuk memilih provinsi
+    provinsi_list = sorted(df_merged['provinsi'].unique().tolist())
+    selected_provinsi = st.selectbox(
+        "Pilih Provinsi:",
+        provinsi_list,
+        key="select_provinsi_dash"
+    )
+    
+    # Filter data berdasarkan provinsi
+    df_filtered = df_merged[df_merged['provinsi'] == selected_provinsi]
+    
+    # Agregasi jumlah formasi per instansi (eselon 1)
+    formasi_per_instansi = df_filtered.groupby('eselon_1_penempatan')['alokasi_kebutuhan'].sum().reset_index()
+    formasi_per_instansi.columns = ['Instansi', 'Total_Formasi']
+    formasi_per_instansi = formasi_per_instansi.sort_values('Total_Formasi', ascending=False).head(20)
+    
+    if len(formasi_per_instansi) > 0:
+        # Potong nama instansi jika terlalu panjang
+        formasi_per_instansi['Instansi_Short'] = formasi_per_instansi['Instansi'].apply(
+            lambda x: x[:50] + '...' if len(x) > 50 else x
+        )
+        
+        fig_formasi = go.Figure(data=[
+            go.Bar(
+                x=formasi_per_instansi['Instansi_Short'],
+                y=formasi_per_instansi['Total_Formasi'],
+                text=formasi_per_instansi['Total_Formasi'],
+                textposition='outside',
+                marker=dict(
+                    color=formasi_per_instansi['Total_Formasi'],
+                    colorscale='Blues',
+                    showscale=True,
+                    colorbar=dict(title="Formasi")
+                ),
+                hovertemplate='<b>%{x}</b><br>Total Formasi: %{y}<extra></extra>'
+            )
+        ])
+        fig_formasi.update_layout(
+            xaxis_title="Instansi (Eselon 1)",
+            yaxis_title="Jumlah Formasi",
+            height=500,
+            showlegend=False,
+            xaxis=dict(tickangle=-45),
+            hovermode='x'
+        )
+        st.plotly_chart(fig_formasi, use_container_width=True, key="formasi_instansi")
+        
+        # Info tambahan
+        col_info1, col_info2, col_info3 = st.columns(3)
+        with col_info1:
+            st.metric("Total Formasi di Provinsi Ini", f"{formasi_per_instansi['Total_Formasi'].sum():,}")
+        with col_info2:
+            st.metric("Jumlah Instansi", len(formasi_per_instansi))
+        with col_info3:
+            st.metric("Rata-rata Formasi/Instansi", f"{formasi_per_instansi['Total_Formasi'].mean():.0f}")
+    else:
+        st.info("Tidak ada data untuk provinsi ini.")
+    
+    st.divider()
+    
+    # ========== ROW 4: Chart Tambahan - Top 10 Jabatan Terpopuler ==========
+    st.subheader("🎯 Top 10 Jabatan dengan Formasi Terbanyak")
+    
+    top_jabatan = df_merged.groupby('nama_jabatan')['alokasi_kebutuhan'].sum().reset_index()
+    top_jabatan.columns = ['Jabatan', 'Total_Formasi']
+    top_jabatan = top_jabatan.sort_values('Total_Formasi', ascending=False).head(10)
+    
+    # Potong nama jabatan
+    top_jabatan['Jabatan_Short'] = top_jabatan['Jabatan'].apply(
+        lambda x: x[:60] + '...' if len(x) > 60 else x
+    )
+    
+    fig_top_jabatan = go.Figure(data=[
+        go.Bar(
+            y=top_jabatan['Jabatan_Short'][::-1],  # Reverse untuk top di atas
+            x=top_jabatan['Total_Formasi'][::-1],
+            text=top_jabatan['Total_Formasi'][::-1],
+            textposition='outside',
+            orientation='h',
+            marker=dict(
+                color=top_jabatan['Total_Formasi'][::-1],
+                colorscale='Reds',
+                showscale=True,
+                colorbar=dict(title="Formasi")
+            ),
+            hovertemplate='<b>%{y}</b><br>Total Formasi: %{x}<extra></extra>'
+        )
+    ])
+    fig_top_jabatan.update_layout(
+        xaxis_title="Jumlah Formasi",
+        yaxis_title="Nama Jabatan",
+        height=600,
+        showlegend=False,
+        hovermode='y'
+    )
+    st.plotly_chart(fig_top_jabatan, use_container_width=True, key="top_jabatan")
+    
+    st.divider()
+    
+    
+    
+    # ========== ROW 6: Statistik Regional ==========
+    st.subheader("📊 Statistik Regional")
+    
+    col_reg1, col_reg2 = st.columns(2)
+    
+    with col_reg1:
+        st.markdown("**🏆 Top 5 Provinsi dengan Formasi Terbanyak**")
+        top_prov_formasi = df_merged.groupby('provinsi')['alokasi_kebutuhan'].sum().nlargest(5).reset_index()
+        top_prov_formasi.columns = ['Provinsi', 'Total Formasi']
+        
+        for idx, row in top_prov_formasi.iterrows():
+            st.metric(
+                f"{idx+1}. {row['Provinsi']}", 
+                f"{row['Total Formasi']:,} formasi"
+            )
+    
+    with col_reg2:
+        st.markdown("**🎓 Top 5 Instansi dengan Formasi Terbanyak**")
+        top_instansi = df_merged.groupby('eselon_1_penempatan')['alokasi_kebutuhan'].sum().nlargest(5).reset_index()
+        top_instansi.columns = ['Instansi', 'Total Formasi']
+        
+        for idx, row in top_instansi.iterrows():
+            instansi_name = row['Instansi'][:40] + '...' if len(row['Instansi']) > 40 else row['Instansi']
+            st.metric(
+                f"{idx+1}. {instansi_name}", 
+                f"{row['Total Formasi']:,} formasi"
+            )
 
 # ==================== CHATBOT UI COMPONENT ====================
 
 def render_chatbot_section(chatbot, mode: str, chat_key: str):
-    """Render chatbot section untuk mode tertentu"""
+    """Render chatbot section dengan UI yang menarik"""
     
-    st.divider()
-    st.subheader("💬 AI Assistant - Tanya Jawab")
+    st.markdown("---")
+    st.markdown('<div class="section-header">💬 AI Assistant - Tanya Jawab Interaktif</div>', unsafe_allow_html=True)
+    
+    # Welcome message with styling
+    st.markdown("""
+    <div class="custom-info-box">
+        <div style="display: flex; align-items: center;">
+            <div style="font-size: 2.5rem; margin-right: 1rem;">🤖</div>
+            <div>
+                <div style="font-weight: 600; font-size: 1.1rem; color: #667eea;">AI Assistant Siap Membantu!</div>
+                <div style="font-size: 0.9rem; margin-top: 0.3rem;">
+                    Tanyakan apa saja tentang rekomendasi jabatan di atas. Saya akan memberikan penjelasan detail dan insight yang berguna.
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Tips berdasarkan mode
-    with st.expander("💡 Tips Pertanyaan"):
+    with st.expander("💡 Contoh Pertanyaan yang Bisa Ditanyakan", expanded=False):
         if mode == 'candidate':
             st.markdown("""
-            - Bisakah berikan uraian lebih detail tentang jabatan nomor 1?
-            - Kalau di provinsi lain apakah ada formasi lagi?
-            - Apakah benar tidak ada kemungkinan saya bekerja di lapangan jika memilih jabatan nomor 1?
-            - Bandingkan jabatan nomor 1 dan nomor 3, mana yang lebih cocok untuk saya?
-            - Apa saja skill yang harus saya tingkatkan untuk jabatan nomor 2?
-            """)
+            <div style="line-height: 2;">
+            ✨ <strong>Bisakah berikan uraian lebih detail tentang jabatan nomor 1?</strong><br>
+            ✨ <strong>Kalau di provinsi lain apakah ada formasi lagi?</strong><br>
+            ✨ <strong>Apakah benar tidak ada kemungkinan saya bekerja di lapangan jika memilih jabatan nomor 1?</strong><br>
+            ✨ <strong>Bandingkan jabatan nomor 1 dan nomor 3, mana yang lebih cocok untuk saya?</strong><br>
+            ✨ <strong>Apa saja skill yang harus saya tingkatkan untuk jabatan nomor 2?</strong>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            - Jabatan nomor 3 juga bisa bantu untuk mengelola keuangan?
-            - Apa perbedaan tugas antara jabatan nomor 1 dan nomor 2?
-            - Jabatan mana yang lebih fokus ke pekerjaan teknis?
-            - Apakah jabatan nomor 1 cocok untuk pekerjaan lapangan?
-            """)
+            <div style="line-height: 2;">
+            ✨ <strong>Jabatan nomor 3 juga bisa bantu untuk mengelola keuangan?</strong><br>
+            ✨ <strong>Apa perbedaan tugas antara jabatan nomor 1 dan nomor 2?</strong><br>
+            ✨ <strong>Jabatan mana yang lebih fokus ke pekerjaan teknis?</strong><br>
+            ✨ <strong>Apakah jabatan nomor 1 cocok untuk pekerjaan lapangan?</strong><br>
+            ✨ <strong>Berapa total formasi yang tersedia untuk jabatan ini?</strong>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # Chat container
+    # Info box tentang batasan
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%); 
+                padding: 1rem; border-radius: 10px; margin: 1rem 0;
+                border-left: 5px solid #e17055;">
+        <div style="display: flex; align-items: center;">
+            <div style="font-size: 1.5rem; margin-right: 0.8rem;">⚡</div>
+            <div style="font-size: 0.9rem;">
+                <strong>Tips Penggunaan:</strong> Gunakan pertanyaan yang ringkas dan spesifik. 
+                Jika terkena quota limit, tunggu sekitar 1 menit sebelum mencoba lagi.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Chat container with custom styling
+    st.markdown('<div style="margin-top: 1.5rem;"></div>', unsafe_allow_html=True)
     chat_container = st.container()
     
-    # Display chat history
+    # Display chat history with enhanced styling
     with chat_container:
-        for i, msg in enumerate(chatbot.chat_history):
-            with st.chat_message("user"):
-                st.write(msg['user'])
-            with st.chat_message("assistant"):
-                st.write(msg['assistant'])
+        if len(chatbot.chat_history) == 0:
+            st.markdown("""
+            <div class="card-container" style="text-align: center; padding: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">💭</div>
+                <div style="color: #666; font-size: 1.1rem;">
+                    Belum ada percakapan. Mulai tanyakan sesuatu!
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            for i, msg in enumerate(chatbot.chat_history):
+                with st.chat_message("user", avatar="👤"):
+                    st.markdown(f"**Anda:** {msg['user']}")
+                with st.chat_message("assistant", avatar="🤖"):
+                    st.markdown(f"**AI Assistant:** {msg['assistant']}")
     
-    # Chat input
-    user_input = st.chat_input("Tanyakan sesuatu...", key=f"chat_input_{chat_key}")
+    # Chat input with custom placeholder
+    placeholder_text = "Ketik pertanyaan Anda di sini... (misal: Jelaskan tugas jabatan nomor 1)"
+    user_input = st.chat_input(placeholder_text, key=f"chat_input_{chat_key}")
     
     if user_input:
-        # Add user message to history
-        with chat_container:
-            with st.chat_message("user"):
-                st.write(user_input)
-            
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("🤔 Berpikir..."):
-                    response = chatbot.chat(user_input)
-                    st.write(response)
+        # Get AI response with animated spinner
+        with st.spinner("🤔 AI sedang berpikir dan menganalisis..."):
+            response = chatbot.chat(user_input)
         
+        # Display updated chat
+        with chat_container:
+            with st.chat_message("user", avatar="👤"):
+                st.markdown(f"**Anda:** {user_input}")
+            with st.chat_message("assistant", avatar="🤖"):
+                st.markdown(f"**AI Assistant:** {response}")
+        
+        # Rerun to update the display
         st.rerun()
 
 # ==================== MAIN APP ====================
 
 def main():
-    st.title("CASN Expert Recommendation and Decision Assistance System")
-    st.markdown("**Sistem Rekomendasi Jabatan dan Kebutuhan Formasi**")
+    # Load custom CSS first
+    load_custom_css()
+    
+    # Animated Header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🎯 CERDAS</h1>
+        <p><strong>CASN Expert Recommendation and Decision Assistance System</strong></p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Sistem Rekomendasi Cerdas untuk Kandidat & Formasi Jabatan CASN Indonesia</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Sidebar: Settings
     with st.sidebar:
-        st.header("🎯 CERDAS")
+        st.markdown("# 🎯 CERDAS")
+        st.markdown("---")
         
-        top_k = st.slider("Jumlah Rekomendasi", 5, 30, 10, 5)
+        # Settings Section
+        st.markdown("#### ⚙️ Pengaturan")
+        top_k = st.slider(
+            "Jumlah Rekomendasi",
+            min_value=1,
+            max_value=10,
+            value=5,
+            step=1,
+            help="Tentukan berapa banyak rekomendasi yang ingin ditampilkan"
+        )
         
-        st.divider()
+        st.markdown("---")
         
-        # System status
-        st.subheader("📊 Status Sistem")
+        # System Status Section
+        st.markdown("#### 📊 Status Sistem")
         if 'data_initialized' in st.session_state and st.session_state.data_initialized:
-            st.success("✅ Data siap")
+            st.markdown("""
+            <div class="custom-info-box">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem;">✅</div>
+                    <div style="font-weight: 600; color: #667eea;">Data Siap</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             if 'search_engine' in st.session_state and st.session_state.search_engine:
                 if st.session_state.search_engine.embeddings is not None:
-                    st.success("✅ AI Search aktif")
+                    st.markdown("""
+                    <div class="custom-info-box" style="margin-top: 1rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem;">🤖</div>
+                            <div style="font-weight: 600; color: #667eea;">AI Search Aktif</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.info("ℹ️ Keyword search aktif")
+                    st.info("ℹ️ Keyword Search Aktif")
         else:
             st.warning("⚠️ Memuat data...")
+        
+        st.markdown("---")
+        
+        # Quick Stats (if data available)
+        # if 'data_manager' in st.session_state and st.session_state.data_manager.df_merged is not None:
+        #     st.markdown("#### 📈 Quick Stats")
+        #     stats = st.session_state.data_manager.get_statistics()
+            
+        #     st.metric("Total Jabatan", f"{stats.get('total_jabatan', 0):,}", delta="Database")
+        #     st.metric("Total Formasi", f"{stats.get('total_formasi', 0):,}", delta="Tersedia")
+        #     st.metric("Provinsi", stats.get('provinsi_count', 0), delta="Wilayah")
+        
+        # st.markdown("---")
+        
+        # Info Section
+        st.markdown("#### ℹ️ Tentang CERDAS")
+        st.markdown("""
+        <div style="font-size: 0.85rem; line-height: 1.6;">
+        CERDAS menggunakan teknologi AI untuk memberikan rekomendasi jabatan CASN yang paling sesuai dengan profil dan kebutuhan Anda.
+        </div>
+        """, unsafe_allow_html=True)
     
     # Initialize Session State
     if 'data_manager' not in st.session_state:
         st.session_state.data_manager = CASNDataManager()
     if 'search_engine' not in st.session_state:
         st.session_state.search_engine = None
-    if 'results' not in st.session_state:
-        st.session_state.results = None
+    if 'results_mode1' not in st.session_state:
+        st.session_state.results_mode1 = None
+    if 'results_mode2' not in st.session_state:
+        st.session_state.results_mode2 = None
     if 'data_initialized' not in st.session_state:
         st.session_state.data_initialized = False
+    if 'chatbot_mode1' not in st.session_state:
+        st.session_state.chatbot_mode1 = None
+    if 'chatbot_mode2' not in st.session_state:
+        st.session_state.chatbot_mode2 = None
+    if 'current_mode' not in st.session_state:
+        st.session_state.current_mode = None
+    if 'current_profile_mode1' not in st.session_state:
+        st.session_state.current_profile_mode1 = None
+    if 'current_profile_mode2' not in st.session_state:
+        st.session_state.current_profile_mode2 = None
     
     # Get Gemini API Key (dari environment atau secrets)
     gemini_api_key = os.getenv("GEMINI_API_KEY", "")
@@ -630,84 +1387,110 @@ def main():
             st.session_state.search_engine = search_engine
             st.session_state.data_initialized = True
     
-    # Tabs
+    # Tabs with Icons
     tabs = st.tabs([
-        "📊 Dashboard",
-        "🧑‍💼 Kandidat → Jabatan",
-        "🏢 Instansi → Pegawai"
+        "📊 Dashboard Analytics",
+        "🧑‍💼 Kandidat → Cari Jabatan",
+        "🏢 Instansi → Cari Pegawai"
     ])
     
     # TAB 1: Dashboard
     with tabs[0]:
-        st.header("📊 Dashboard Overview")
+        st.markdown('<div class="section-header">📊 Dashboard Analytics & Insights</div>', unsafe_allow_html=True)
         
         if st.session_state.data_manager.df_merged is not None:
             stats = st.session_state.data_manager.get_statistics()
-            show_statistics_dashboard(stats)
+            show_statistics_dashboard(stats, st.session_state.data_manager.df_merged)
             
-            # Preview data
-            with st.expander("👁️ Preview Data Jabatan"):
-                st.dataframe(
-                    st.session_state.data_manager.df_merged[
-                        ['nama_jabatan', 'eselon_1_penempatan', 'kualifikasi_tingkat_pendidikan', 
-                         'provinsi', 'alokasi_kebutuhan']
-                    ].head(20),
-                    use_container_width=True
-                )
+            # Preview data with custom styling
+            
         else:
             st.error("❌ Data tidak ditemukan di folder assets/data")
             st.info("💡 Pastikan file CSV ada di folder assets/data dengan format yang benar")
     
     # TAB 2: Mode 1 - Kandidat → Jabatan
     with tabs[1]:
-        st.header("🧑‍💼 Cari Jabatan untuk Kandidat")
+        st.markdown('<div class="section-header">🧑‍💼 Mode Kandidat: Temukan Jabatan Impian Anda</div>', unsafe_allow_html=True)
         
         if st.session_state.search_engine is None:
             st.warning("⚠️ Data belum tersedia")
         else:
+            # Info Banner
+            st.markdown("""
+            <div class="custom-info-box">
+                <div style="display: flex; align-items: center;">
+                    <div style="font-size: 2rem; margin-right: 1rem;">💡</div>
+                    <div>
+                        <strong>Tips:</strong> Lengkapi profil Anda dengan detail untuk mendapatkan rekomendasi jabatan yang paling sesuai dengan kemampuan dan preferensi Anda.
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             with st.form("candidate_form"):
-                st.subheader("📝 Formulir Kandidat")
+                st.markdown("#### 📝 Profil Kandidat")
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    pendidikan = st.selectbox("Tingkat Pendidikan Terakhir*", JENJANG_PENDIDIKAN, index=7)
+                    st.markdown("**🎓 Pendidikan & Keahlian**")
+                    pendidikan = st.selectbox(
+                        "Tingkat Pendidikan Terakhir*",
+                        JENJANG_PENDIDIKAN,
+                        index=7,
+                        help="Pilih jenjang pendidikan tertinggi Anda"
+                    )
                     jurusan = st.text_input(
                         "Jurusan*",
-                        placeholder="Contoh: Teknik Informatika, Akuntansi"
+                        placeholder="Contoh: Teknik Informatika, Akuntansi",
+                        help="Masukkan jurusan atau program studi Anda"
                     )
                     instansi = st.text_area(
-                        "Instansi (opsional)",
+                        "Preferensi Instansi (opsional)",
                         placeholder="Detail eselon 1-3 jika ada preferensi tertentu",
-                        height=80
+                        height=80,
+                        help="Kosongkan jika tidak ada preferensi khusus"
                     )
                 
                 with col2:
+                    st.markdown("**📍 Lokasi & Gaji**")
+                    provinsi = st.selectbox(
+                        "Preferensi Lokasi Penempatan",
+                        ["Semua"] + PROVINSI_INDONESIA,
+                        help="Pilih provinsi yang Anda inginkan"
+                    )
                     gaji_min = st.number_input(
                         "Preferensi Pendapatan Bulanan (Min)",
                         min_value=0,
                         value=5000000,
                         step=500000,
-                        format="%d"
+                        format="%d",
+                        help="Tentukan ekspektasi gaji minimum Anda"
                     )
-                    provinsi = st.selectbox(
-                        "Preferensi Lokasi Penempatan",
-                        ["Semua"] + PROVINSI_INDONESIA
-                    )
+      
+                
+                st.markdown("---")
+                st.markdown("**💼 Pengalaman & Ekspektasi**")
                 
                 pengalaman = st.text_area(
                     "Pengalaman Bekerja*",
                     placeholder="Uraian pengalaman bekerja yang pernah dilakukan...\nContoh: Saya pernah bekerja sebagai admin call center yang banyak berkomunikasi dengan pengguna...",
-                    height=100
+                    height=100,
+                    help="Ceritakan pengalaman kerja Anda secara singkat"
                 )
                 
                 pekerjaan_diharapkan = st.text_area(
                     "Pekerjaan yang Diharapkan*",
                     placeholder="Uraian jenis pekerjaan seperti apa yang ingin dipenuhi...\nContoh: Saya mengharapkan pekerjaan yang tidak terlalu banyak teknis pakai komputer, lebih suka kerja yang di lapangan...",
-                    height=100
+                    height=100,
+                    help="Jelaskan jenis pekerjaan yang Anda inginkan"
                 )
                 
-                submit_candidate = st.form_submit_button("🔍 Cari Rekomendasi Jabatan", use_container_width=True)
+                st.markdown("---")
+                submit_candidate = st.form_submit_button(
+                    "🔍 Cari Rekomendasi Jabatan Sekarang!",
+                    use_container_width=True
+                )
             
             if submit_candidate:
                 if not all([jurusan, pengalaman, pekerjaan_diharapkan]):
@@ -725,14 +1508,14 @@ def main():
                     
                     with st.spinner("🔍 Mencari rekomendasi terbaik..."):
                         results = st.session_state.search_engine.search_for_candidate(profile, top_k)
-                        st.session_state.results = results
+                        st.session_state.results_mode1 = results
                         st.session_state.current_mode = 'candidate'
-                        st.session_state.current_profile = profile
+                        st.session_state.current_profile_mode1 = profile
                         
                         # Initialize chatbot
                         if use_ai:
                             try:
-                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.5-flash")
+                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.0-flash-lite")
                                 chatbot.set_context(profile, results, 'candidate')
                                 st.session_state.chatbot_mode1 = chatbot
                             except Exception as e:
@@ -753,22 +1536,22 @@ def main():
                         for idx, row in results.iterrows():
                             with st.expander(
                                 f"#{idx+1} — {row['nama_jabatan']} "
-                                f"(Match: {row['match_score']:.2%})",
+                                f"(Match: {row['match_score']:.2%}) — "
+                                f"{row.get('eselon_1_penempatan', '-')}",
                                 expanded=(idx < 3)
                             ):
                                 col_a, col_b = st.columns([2, 1])
                                 
                                 with col_a:
-                                    st.markdown(f"**🏢 Instansi:** {row.get('eselon_1_penempatan', '-')}")
-                                    st.markdown(f"**📍 Unit:** {row.get('eselon_2_penempatan', '-')}")
+                                    st.markdown(f"**🏢 Eselon 1:** {row.get('eselon_1_penempatan', '-')}")
+                                    st.markdown(f"**📍 Eselon 2:** {row.get('eselon_2_penempatan', '-')}")
                                     if row.get('eselon_3_penempatan', '-') != '-':
-                                        st.markdown(f"**📍 Sub-unit:** {row.get('eselon_3_penempatan', '-')}")
+                                        st.markdown(f"**📍 Eselon 3:** {row.get('eselon_3_penempatan', '-')}")
                                     st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
                                     st.markdown(f"**👥 Alokasi:** {row.get('alokasi_kebutuhan', 0)} orang")
                                     
                                     # Kualifikasi
                                     st.markdown("**🎓 Kualifikasi Pendidikan:**")
-                                    # Format kualifikasi dengan koma
                                     kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
                                     if '\n' in str(kualifikasi):
                                         kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
@@ -782,12 +1565,20 @@ def main():
                                         )
                                 
                                 with col_b:
-                                    st.markdown("**📊 Match Score**")
-                                    st.metric("Overall", f"{row['match_score']:.1%}")
+                                    st.markdown("##### 📊 Skor Kecocokan")
+                                    st.markdown(f"""
+                                    <div class="card-container" style="text-align: center;">
+                                        <div style="font-size: 3rem; font-weight: 700; color: #667eea;">
+                                            {row['match_score']:.0%}
+                                        </div>
+                                        <div style="color: #666; margin-top: 0.5rem;">Overall Match</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                                 
                                 # Tugas & Fungsi
                                 if pd.notna(row.get('deskripsi_tugas_pokok')):
-                                    with st.expander("📋 Tugas Pokok & Fungsi"):
+                                    st.markdown("---")
+                                    with st.expander("📋 Lihat Tugas Pokok & Fungsi"):
                                         st.markdown("**Tugas Pokok:**")
                                         st.write(row.get('deskripsi_tugas_pokok', '-'))
                                         
@@ -796,19 +1587,19 @@ def main():
                                             kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
                                             for line in kegiatan.split(';'):
                                                 if line.strip():
-                                                    st.markdown(f"- {line.strip()}")
+                                                    st.markdown(f"• {line.strip()}")
                         
-                        # Export button
-                        if len(results) > 0:
-                            st.divider()
-                            csv = results.to_csv(index=False)
-                            st.download_button(
-                                "📥 Download Hasil (CSV)",
-                                csv,
-                                f"rekomendasi_kandidat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                "text/csv",
-                                key="export_candidate"
-                            )
+                        # Export button with styling
+                        st.markdown("---")
+                        csv = results.to_csv(index=False)
+                        st.download_button(
+                            "📥 Download Hasil Rekomendasi (CSV)",
+                            csv,
+                            f"rekomendasi_kandidat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            "text/csv",
+                            key="export_candidate",
+                            use_container_width=True
+                        )
                         
                         # Chatbot Section
                         if use_ai and 'chatbot_mode1' in st.session_state and st.session_state.chatbot_mode1:
@@ -817,48 +1608,138 @@ def main():
                             st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY di environment atau .env file")
                     else:
                         st.warning("❌ Tidak ditemukan jabatan yang sesuai. Coba ubah filter pencarian.")
+            
+            # Display previous results (untuk chat interaction)
+            if not submit_candidate and 'results_mode1' in st.session_state and st.session_state.results_mode1 is not None:
+                results = st.session_state.results_mode1
+                
+                if len(results) > 0:
+                    st.success(f"✅ Menampilkan {len(results)} rekomendasi jabatan sebelumnya")
+                    
+                    if HAS_PLOTLY:
+                        plot_top_matches(results, "candidate_prev")
+                    
+                    st.markdown("---")
+                    st.markdown('<div class="section-header">📋 Daftar Rekomendasi Jabatan</div>', unsafe_allow_html=True)
+                    
+                    for idx, row in results.iterrows():
+                        match_pct = row['match_score'] * 100
+                        emoji = "🌟" if match_pct >= 80 else "⭐" if match_pct >= 60 else "✨"
+                        badge_color = "success" if match_pct >= 80 else "info"
+                        
+                        with st.expander(
+                            f"{emoji} #{idx+1} — {row['nama_jabatan']} (Match: {row['match_score']:.0%})",
+                            expanded=(idx < 2)
+                        ):
+                            st.markdown(f"""
+                            <div style="margin-bottom: 1rem;">
+                                <span class="badge badge-{badge_color}">Match Score: {row['match_score']:.0%}</span>
+                                <span class="badge badge-info">Formasi: {row.get('alokasi_kebutuhan', 0)} orang</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            col_a, col_b = st.columns([2, 1])
+                            
+                            with col_a:
+                                st.markdown(f"**🏢 Eselon 1:** {row.get('eselon_1_penempatan', '-')}")
+                                st.markdown(f"**📍 Eselon 2:** {row.get('eselon_2_penempatan', '-')}")
+                                if row.get('eselon_3_penempatan', '-') != '-':
+                                    st.markdown(f"**📍 Eselon 3:** {row.get('eselon_3_penempatan', '-')}")
+                                st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
+                                
+                                kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
+                                if '\n' in str(kualifikasi):
+                                    kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
+                                st.info(f"**🎓 Jurusan:** {kualifikasi}")
+                                
+                                if row.get('gaji_min', 0) > 0:
+                                    st.markdown(f"**💰 Gaji:** {format_currency(row['gaji_min'])} - {format_currency(row['gaji_max'])}")
+                            
+                            with col_b:
+                                st.metric("Match Score", f"{row['match_score']:.0%}")
+                            
+                            if pd.notna(row.get('deskripsi_tugas_pokok')):
+                                with st.expander("📋 Tugas Pokok & Fungsi"):
+                                    st.write(row.get('deskripsi_tugas_pokok', '-'))
+                                    if pd.notna(row.get('rincian_kegiatan_fungsi')):
+                                        kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
+                                        for line in kegiatan.split(';'):
+                                            if line.strip():
+                                                st.markdown(f"• {line.strip()}")
+                    
+                    st.markdown("---")
+                    csv = results.to_csv(index=False)
+                    st.download_button(
+                        "📥 Download Hasil (CSV)",
+                        csv,
+                        f"rekomendasi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        "text/csv",
+                        key="export_prev"
+                    )
+                    
+                    if use_ai and 'chatbot_mode1' in st.session_state and st.session_state.chatbot_mode1:
+                        render_chatbot_section(st.session_state.chatbot_mode1, 'candidate', 'mode1')
     
     # TAB 3: Mode 2 - Instansi → Pegawai
+    # TAB 3: Mode 2 - Instansi → Pegawai
     with tabs[2]:
-        st.header("🏢 Cari Jabatan untuk Kebutuhan Instansi")
+        st.markdown('<div class="section-header">🏢 Mode Instansi: Temukan Pegawai yang Tepat</div>', unsafe_allow_html=True)
         
         if st.session_state.search_engine is None:
             st.warning("⚠️ Data belum tersedia")
         else:
+            # Info Banner
+            st.markdown("""
+            <div class="custom-info-box">
+                <div style="display: flex; align-items: center;">
+                    <div style="font-size: 2rem; margin-right: 1rem;">💡</div>
+                    <div>
+                        <strong>Tips:</strong> Jelaskan kebutuhan pegawai dengan detail untuk mendapatkan rekomendasi jabatan yang paling sesuai dengan kebutuhan instansi Anda.
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             with st.form("job_requirement_form"):
-                st.subheader("📝 Formulir Kebutuhan Pegawai")
+                st.markdown("#### 📝 Kebutuhan Pegawai Instansi")
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
+                    st.markdown("**🎓 Kualifikasi Pendidikan**")
                     req_pendidikan = st.selectbox(
-                        "Tingkat Pendidikan*",
+                        "Tingkat Pendidikan yang Dibutuhkan*",
                         JENJANG_PENDIDIKAN,
                         index=7,
-                        key='req_edu'
+                        key='req_edu',
+                        help="Pilih minimal jenjang pendidikan yang dibutuhkan"
                     )
                 
                 with col2:
-                    st.write("")  # Spacer
+                    st.write("")
+                
+                st.markdown("---")
+                st.markdown("**💼 Deskripsi Kebutuhan**")
                 
                 uraian_kebutuhan = st.text_area(
                     "Uraian Kebutuhan Pekerjaan yang Ingin Dipenuhi*",
-                    placeholder="Contoh: Membutuhkan pegawai untuk mengelola sistem informasi, "
-                                "membuat aplikasi web, maintenance server, dan dokumentasi teknis...",
+                    placeholder="Contoh: Membutuhkan pegawai untuk mengelola sistem informasi, membuat aplikasi web, maintenance server, dan dokumentasi teknis...",
                     height=150,
-                    key='req_desc'
+                    key='req_desc',
+                    help="Jelaskan tugas dan tanggung jawab yang akan dilakukan"
                 )
                 
                 uraian_pekerjaan = st.text_area(
                     "Uraian Jenis Pekerjaan yang Diharapkan*",
-                    placeholder="Contoh: Pekerjaan lebih banyak di lapangan atau di kantor, "
-                                "banyak interaksi dengan masyarakat atau lebih ke teknis...",
+                    placeholder="Contoh: Pekerjaan lebih banyak di lapangan atau di kantor, banyak interaksi dengan masyarakat atau lebih ke teknis...",
                     height=100,
-                    key='req_job'
+                    key='req_job',
+                    help="Jelaskan karakteristik pekerjaan yang diharapkan"
                 )
                 
+                st.markdown("---")
                 submit_requirement = st.form_submit_button(
-                    "🔍 Cari Rekomendasi Jabatan",
+                    "🔍 Cari Rekomendasi Jabatan Sekarang!",
                     use_container_width=True
                 )
             
@@ -873,94 +1754,175 @@ def main():
                     }
                     
                     with st.spinner("🔍 Mencari jabatan yang sesuai..."):
-                        results = st.session_state.search_engine.search_for_job_requirement(
-                            requirement, top_k
-                        )
-                        st.session_state.results = results
+                        results = st.session_state.search_engine.search_for_job_requirement(requirement, top_k)
+                        st.session_state.results_mode2 = results
                         st.session_state.current_mode = 'job_requirement'
-                        st.session_state.current_profile = requirement
+                        st.session_state.current_profile_mode2 = requirement
                         
                         # Initialize chatbot
                         if use_ai:
                             try:
-                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.5-flash")
+                                chatbot = GeminiChatbot(gemini_api_key, "gemini-2.0-flash-lite")
                                 chatbot.set_context(requirement, results, 'job_requirement')
                                 st.session_state.chatbot_mode2 = chatbot
                             except Exception as e:
+                                st.warning(f"⚠️ Chatbot tidak dapat diinisialisasi: {str(e)[:100]}")
                                 st.session_state.chatbot_mode2 = None
                     
                     if len(results) > 0:
-                        st.success(f"✅ Ditemukan {len(results)} jabatan yang cocok!")
+                        st.balloons()
+                        st.success(f"✅ Ditemukan {len(results)} jabatan yang cocok dengan kebutuhan Anda!")
                         
-                        # Visualisasi
                         if HAS_PLOTLY:
                             plot_top_matches(results, "requirement")
                         
-                        st.divider()
-                        
-                        # Display Results
-                        st.subheader("📋 Daftar Jabatan yang Sesuai")
+                        st.markdown("---")
+                        st.markdown('<div class="section-header">📋 Daftar Jabatan yang Sesuai</div>', unsafe_allow_html=True)
                         
                         for idx, row in results.iterrows():
+                            match_pct = row['match_score'] * 100
+                            emoji = "🌟" if match_pct >= 80 else "⭐" if match_pct >= 60 else "✨"
+                            badge_color = "success" if match_pct >= 80 else "info"
+                            
                             with st.expander(
-                                f"#{idx+1} — {row['nama_jabatan']} "
-                                f"(Match: {row['match_score']:.2%})",
-                                expanded=(idx < 3)
+                                f"{emoji} #{idx+1} — {row['nama_jabatan']} (Match: {row['match_score']:.0%})",
+                                expanded=(idx < 2)
                             ):
-                                st.markdown(f"**🎓 Kualifikasi:** {row.get('kualifikasi_tingkat_pendidikan', '-')}")
-                                # Format kualifikasi dengan koma
-                                kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
-                                if '\n' in str(kualifikasi):
-                                    kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
-                                st.markdown(f"**📚 Jurusan:** {kualifikasi}")
+                                st.markdown(f"""
+                                <div style="margin-bottom: 1rem;">
+                                    <span class="badge badge-{badge_color}">Match Score: {row['match_score']:.0%}</span>
+                                    <span class="badge badge-info">Formasi: {row.get('alokasi_kebutuhan', 0)} orang</span>
+                                </div>
+                                """, unsafe_allow_html=True)
                                 
-                                # Rangkuman Tugas & Fungsi
-                                st.markdown("**📋 Rangkuman Tugas & Fungsi:**")
+                                col_a, col_b = st.columns([2, 1])
                                 
-                                if pd.notna(row.get('deskripsi_tugas_pokok')):
-                                    st.info(row.get('deskripsi_tugas_pokok', '-'))
+                                with col_a:
+                                    st.markdown("##### 🎓 Kualifikasi & Keahlian")
+                                    st.markdown(f"**Pendidikan:** {row.get('kualifikasi_tingkat_pendidikan', '-')}")
+                                    
+                                    kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
+                                    if '\n' in str(kualifikasi):
+                                        kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
+                                    st.info(f"**📚 Jurusan:** {kualifikasi}")
+                                    
+                                    st.markdown("---")
+                                    st.markdown("##### 📋 Tugas & Fungsi Jabatan")
+                                    
+                                    if pd.notna(row.get('deskripsi_tugas_pokok')):
+                                        st.write(row.get('deskripsi_tugas_pokok', '-'))
+                                    
+                                    if pd.notna(row.get('rincian_kegiatan_fungsi')):
+                                        with st.expander("📝 Lihat Rincian Kegiatan Lengkap"):
+                                            kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
+                                            for line in kegiatan.split(';'):
+                                                if line.strip():
+                                                    st.markdown(f"• {line.strip()}")
+                                    
+                                    st.markdown("---")
+                                    st.markdown("##### 🏢 Informasi Formasi")
+                                    col_x, col_y = st.columns(2)
+                                    with col_x:
+                                        st.markdown(f"**Instansi:** {row.get('eselon_1_penempatan', '-')}")
+                                        st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
+                                    with col_y:
+                                        st.markdown(f"**👥 Kebutuhan:** {row.get('alokasi_kebutuhan', 0)} orang")
+                                        if row.get('gaji_min', 0) > 0:
+                                            st.markdown(f"**💰 Gaji:** {format_currency(row['gaji_min'])} - {format_currency(row['gaji_max'])}")
                                 
-                                if pd.notna(row.get('rincian_kegiatan_fungsi')):
-                                    with st.expander("Lihat Rincian Kegiatan"):
-                                        kegiatan = row.get('rincian_kegiatan_fungsi', '').strip()
-                                        for line in kegiatan.split(';'):
-                                            if line.strip():
-                                                st.markdown(f"- {line.strip()}")
-                                
-                                # Informasi Formasi
-                                st.markdown("---")
-                                col_x, col_y = st.columns(2)
-                                with col_x:
-                                    st.markdown(f"**🏢 Instansi:** {row.get('eselon_1_penempatan', '-')}")
-                                    st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
-                                with col_y:
-                                    st.markdown(f"**👥 Formasi:** {row.get('alokasi_kebutuhan', 0)} orang")
-                                    if row.get('gaji_min', 0) > 0:
-                                        st.markdown(
-                                            f"**💰 Gaji:** {format_currency(row['gaji_min'])} - "
-                                            f"{format_currency(row['gaji_max'])}"
-                                        )
+                                with col_b:
+                                    st.markdown("##### 📊 Skor Kecocokan")
+                                    st.markdown(f"""
+                                    <div class="card-container" style="text-align: center;">
+                                        <div style="font-size: 3rem; font-weight: 700; color: #667eea;">
+                                            {row['match_score']:.0%}
+                                        </div>
+                                        <div style="color: #666; margin-top: 0.5rem;">Overall Match</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                         
-                        # Export
-                        if len(results) > 0:
-                            st.divider()
-                            csv = results.to_csv(index=False)
-                            st.download_button(
-                                "📥 Download Hasil (CSV)",
-                                csv,
-                                f"rekomendasi_jabatan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                "text/csv",
-                                key="export_requirement"
-                            )
+                        st.markdown("---")
+                        csv = results.to_csv(index=False)
+                        st.download_button(
+                            "📥 Download Hasil Rekomendasi (CSV)",
+                            csv,
+                            f"rekomendasi_jabatan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            "text/csv",
+                            key="export_requirement",
+                            use_container_width=True
+                        )
                         
                         # Chatbot Section
                         if use_ai and 'chatbot_mode2' in st.session_state and st.session_state.chatbot_mode2:
                             render_chatbot_section(st.session_state.chatbot_mode2, 'job_requirement', 'mode2')
                         elif not use_ai:
-                            st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY di environment atau .env file")
+                            st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY")
                     else:
                         st.warning("❌ Tidak ditemukan jabatan yang sesuai.")
-
+            
+            # Display previous results
+            if not submit_requirement and 'results_mode2' in st.session_state and st.session_state.results_mode2 is not None:
+                results = st.session_state.results_mode2
+                
+                if len(results) > 0:
+                    st.success(f"✅ Menampilkan {len(results)} rekomendasi jabatan sebelumnya")
+                    
+                    if HAS_PLOTLY:
+                        plot_top_matches(results, "requirement_prev")
+                    
+                    st.markdown("---")
+                    st.markdown('<div class="section-header">📋 Daftar Jabatan yang Sesuai</div>', unsafe_allow_html=True)
+                    
+                    for idx, row in results.iterrows():
+                        match_pct = row['match_score'] * 100
+                        emoji = "🌟" if match_pct >= 80 else "⭐" if match_pct >= 60 else "✨"
+                        badge_color = "success" if match_pct >= 80 else "info"
+                        
+                        with st.expander(
+                            f"{emoji} #{idx+1} — {row['nama_jabatan']} (Match: {row['match_score']:.0%})",
+                            expanded=(idx < 2)
+                        ):
+                            st.markdown(f"""
+                            <div style="margin-bottom: 1rem;">
+                                <span class="badge badge-{badge_color}">Match: {row['match_score']:.0%}</span>
+                                <span class="badge badge-info">Formasi: {row.get('alokasi_kebutuhan', 0)}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            col_a, col_b = st.columns([2, 1])
+                            
+                            with col_a:
+                                st.markdown(f"**🎓 Pendidikan:** {row.get('kualifikasi_tingkat_pendidikan', '-')}")
+                                kualifikasi = row.get('kualifikasi_program_studi_jurusan', '-')
+                                if '\n' in str(kualifikasi):
+                                    kualifikasi = ', '.join([k.strip() for k in str(kualifikasi).split('\n') if k.strip()])
+                                st.info(f"**📚 Jurusan:** {kualifikasi}")
+                                
+                                if pd.notna(row.get('deskripsi_tugas_pokok')):
+                                    st.markdown("**📋 Tugas:**")
+                                    st.write(row.get('deskripsi_tugas_pokok', '-'))
+                                
+                                st.markdown(f"**🏢 Instansi:** {row.get('eselon_1_penempatan', '-')}")
+                                st.markdown(f"**📍 Lokasi:** {row.get('lokasi', '-')}")
+                            
+                            with col_b:
+                                st.metric("Match", f"{row['match_score']:.0%}")
+                    
+                    st.markdown("---")
+                    csv = results.to_csv(index=False)
+                    st.download_button(
+                        "📥 Download Hasil (CSV)",
+                        csv,
+                        f"rekomendasi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        "text/csv",
+                        key="export_req_prev"
+                    )
+                    
+                    if use_ai and 'chatbot_mode2' in st.session_state and st.session_state.chatbot_mode2:
+                        render_chatbot_section(st.session_state.chatbot_mode2, 'job_requirement', 'mode2')
+    
+    # TAB 3: Mode 2 - Instansi → Pegawai
+    
 
 if __name__ == "__main__":
     main()
