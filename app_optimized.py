@@ -10,7 +10,6 @@ import pandas as pd
 import streamlit as st
 # from dotenv import load_dotenv
 
-load_dotenv()
 
 # Optional imports dengan fallback
 try:
