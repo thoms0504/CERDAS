@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-
+from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 import streamlit as st
