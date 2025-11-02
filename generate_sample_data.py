@@ -82,6 +82,24 @@ INSTANSI_DATA = [
         "instansi_eselon_3": "DIREKTORAT KEUANGAN DAERAH",
         "lokasi": "JAKARTA PUSAT, DKI JAKARTA"
     },
+    {
+        "instansi_eselon_1": "KEMENTERIAN AGAMA",
+        "instansi_eselon_2": "DIREKTORAT JENDERAL BIMBINGAN MASYARAKAT ISLAM",
+        "instansi_eselon_3": "DIREKTORAT URUSAN AGAMA ISLAM DAN PEMBINAAN SYARIAH",
+        "lokasi": "JAKARTA PUSAT, DKI JAKARTA"
+    },
+    {
+        "instansi_eselon_1": "KEMENTERIAN SOSIAL",
+        "instansi_eselon_2": "DIREKTORAT JENDERAL REHABILITASI SOSIAL",
+        "instansi_eselon_3": "-",
+        "lokasi": "JAKARTA SELATAN, DKI JAKARTA"
+    },
+    {
+        "instansi_eselon_1": "KEMENTERIAN PERHUBUNGAN",
+        "instansi_eselon_2": "DIREKTORAT JENDERAL PERHUBUNGAN DARAT",
+        "instansi_eselon_3": "DIREKTORAT LALU LINTAS DAN ANGKUTAN JALAN",
+        "lokasi": "JAKARTA PUSAT, DKI JAKARTA"
+    },
 ]
 
 # ==================== TABEL 4: MASTER PROGRAM STUDI ====================
@@ -89,82 +107,132 @@ PROGRAM_STUDI_DATA = [
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "DESAIN KOMUNIKASI VISUAL",
-        "deskripsi": "Jurusan Desain Komunikasi Visual atau DKV adalah bagian dari ilmu desain yang mempelajari tentang konsep komunikasi dan ungkapan kreatif, dengan memanfaatkan elemen visual untuk menyampaikan pesan dengan tujuan tertentu. Karena unsur pesan memiliki peran yang sangat penting, lulusan jurusan DKV diharapkan mampu mengelolah pesan tersebut menjadi sesuatu yang menarik, informatif, dan komunikatif, sehingga bisa disampaikan secara efektif."
+        "deskripsi": "Jurusan Desain Komunikasi Visual atau DKV adalah bagian dari ilmu desain yang mempelajari tentang konsep komunikasi dan ungkapan kreatif, dengan memanfaatkan elemen visual untuk menyampaikan pesan dengan tujuan tertentu."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "HUBUNGAN MASYARAKAT",
-        "deskripsi": "Jurusan Hubungan Masyarakat (Humas) atau Public Relation (PR) mempelajari cara mencipatkan dan mengelola reputasi serta citra positif suatu organisasi. Mahasiswa akan belajar melakukan komunikasi yang baik, negosiasi, creative thinking, advertising, dan lain-lain. Hal tersebut berkaitan dengan profesi yang akan dijalani di bidang humas atau public relation nantinya. Profesi di bidang ini berkaitan dengan bagaimana cara mengelola hubungan komunikasi antara organisasi dengan pihak eksternal, seperti masyarakat, pemerintah, investor, serta dengan pihak internal perusahaan, yakni karyawan."
+        "deskripsi": "Jurusan Hubungan Masyarakat (Humas) atau Public Relation (PR) mempelajari cara mencipatkan dan mengelola reputasi serta citra positif suatu organisasi."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "HUKUM",
-        "deskripsi": "Ilmu Hukum adalah studi yang mempelajari berbagai sistem hukum yang berkaitan dengan kehidupan kemasyarakatan. Di Prodi Ilmu Hukum, mahasiswa juga belajar mengenai perundang-undangan termasuk di dalamnya hukum dasar (konstitusi, hukum perdata, hukum dagang, hukum tata negara, hukum publik, hukum tata pidana) hingga hukum internasional dengan cakupan yang cukup luas. Pada akhir masa kuliah, biasanya mahasiswa diwajibkan mengikuti magang kerja atau praktik di berbagai firma hukum, lembaga pengadilan dan kantor kejaksaan."
+        "deskripsi": "Ilmu Hukum adalah studi yang mempelajari berbagai sistem hukum yang berkaitan dengan kehidupan kemasyarakatan."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "ILMU KOMUNIKASI",
-        "deskripsi": "Jurusan Ilmu Komunikasi adalah studi yang mempelajari proses penyampaian pesan secara efektif dari komunikator (pemberi pesan) kepada komunikan (penerima pesan) melalui berbagai media. Di jurusan ini kamu akan mempelajari komunikasi dan interaksi antar individu, media, periklanan/publisitas, komunikasi interkultural, hingga komunikasi media sosial."
+        "deskripsi": "Jurusan Ilmu Komunikasi adalah studi yang mempelajari proses penyampaian pesan secara efektif dari komunikator kepada komunikan melalui berbagai media."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "JURNALISTIK",
-        "deskripsi": "Jurusan Jurnalistik mengajak mahasiswa mendalami dunia jurnalistik beserta karakter dan dinamika yang terjadi di berbagai media massa (televisi, radio, cetak, dan online). Mahasiswa akan mempelajari bagaimana suatu informasi dikomunikasikan melalui media massa, dan mengetahui karakter masing-masing media beserta perbaharannya. Dalam perkuliahan, mahasiswa akan belajar berbagai hal termasuk mencari, menulis, serta menyunting berita. Pada akhir kuliah, Umumnya akan dibentuk jurnal atau koran kampus Jurusan Jurnalistik bila berdin sendiri. Kulminasi: Namun, di beberapa kampus Jurusan Jurnalistik bisa berdiri sendiri."
+        "deskripsi": "Jurusan Jurnalistik mengajak mahasiswa mendalami dunia jurnalistik beserta karakter dan dinamika yang terjadi di berbagai media massa."
     },
     {
         "tingkat_pendidikan": "DIII",
         "nama_program_studi": "MANAJEMEN",
-        "deskripsi": "Jurusan Manajemen adalah program studi yang mempelajari tentang kegiatan perusahaan atau korporasi, yang masih memiliki keterkaitan dengan ilmu ekonomi dan bisnis. Jika mendalami Ilmu Manajemen maka akan belajar menjadi seorang 'pengendali' layaknya tokoh Aang pada serial Avatar. Jika Aang mengendalikan elemen bumi, kamu akan mengendalikan roda perusahaan berupa kegiatan manajemen perusahaan, organisasi, strategi bisnis, ketenagakerjaan dan kepegawaian, manajemen produksi, pemasaran, administrasi, hingga organisasi nirlaba."
+        "deskripsi": "Jurusan Manajemen adalah program studi yang mempelajari tentang kegiatan perusahaan atau korporasi, yang masih memiliki keterkaitan dengan ilmu ekonomi dan bisnis."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "MANAJEMEN",
+        "deskripsi": "Jurusan Manajemen adalah program studi yang mempelajari tentang kegiatan perusahaan atau korporasi, yang masih memiliki keterkaitan dengan ilmu ekonomi dan bisnis."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "MANAJEMEN KOMUNIKASI",
-        "deskripsi": "Jurusan manajemen komunikasi adalah program studi yang fokus pada perencanaan, pelaksanaan, dan evaluasi strategi komunikasi secara efektif di berbagai konteks, seperti organisasi dan pemasaran. Lulusannya dibekali kemampuan untuk mengelola komunikasi internal dan eksternal, membangun citra perusahaan, serta merancang pesan yang persuasif untuk mencapai tujuan tertentu."
+        "deskripsi": "Jurusan manajemen komunikasi adalah program studi yang fokus pada perencanaan, pelaksanaan, dan evaluasi strategi komunikasi secara efektif di berbagai konteks."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "MATEMATIKA",
-        "deskripsi": "Jurusan Matematika fokus mempelajari tentang struktur, pola, dan hubungan matematika secara mendalam, seperti geometri, aljabar, teori matematika diskrit dan matematika terapan. Pasa jurusan ini akan belajar berpikir dengan beragam konsep dalam matematika seperti logika, analisis, dan pemodelan matematis."
+        "deskripsi": "Jurusan Matematika fokus mempelajari tentang struktur, pola, dan hubungan matematika secara mendalam, seperti geometri, aljabar, teori matematika diskrit dan matematika terapan."
     },
     {
         "tingkat_pendidikan": "DIII",
         "nama_program_studi": "SISTEM INFORMASI",
-        "deskripsi": "Jurusan Sistem Informasi adalah bidang keilmuan yang menggabungkan ilmu komputer dengan bisnis dan manajemen. Di prodi ini kamu akan belajar gimana mengidentifikasi kebutuhan dan proses bisnis perusahaan berdasarkan data-data yang dimiliki perusahaan. Kemudian merancang sistem yang sesuai dengan kebutuhan perusahaan."
+        "deskripsi": "Jurusan Sistem Informasi adalah bidang keilmuan yang menggabungkan ilmu komputer dengan bisnis dan manajemen."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "SISTEM INFORMASI",
+        "deskripsi": "Jurusan Sistem Informasi adalah bidang keilmuan yang menggabungkan ilmu komputer dengan bisnis dan manajemen."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "STATISTIKA",
-        "deskripsi": "Statistika merupakan perpanjangan dari belajar matematika. Bedanya, Statistika lebih fokus ke arah data dan angka dalam kuantitas besar. Sederhananya, jika kuliah di jurusan Statistika akan mempelajari cara mengumpulkan, menganalisis, dan menyajikan data ke dalam bahasa yang mudah dipahami sehingga bisa dijadikan sebuah informasi untuk banyak orang."
+        "deskripsi": "Statistika merupakan perpanjangan dari belajar matematika. Bedanya, Statistika lebih fokus ke arah data dan angka dalam kuantitas besar."
     },
     {
         "tingkat_pendidikan": "DIII",
         "nama_program_studi": "TEKNOLOGI INFORMASI",
-        "deskripsi": "Teknik Informatika merupakan bidang ilmu yang mempelajari bagaimana menggunakan teknologi komputer secara optimal guna menangani masalah transformasi atau pengolahan data dengan proses logika. Di Jurusan Teknik Informatika kamu akan banyak belajar tentang pemrograman untuk pengembangan perangkat lunak, aplikasi, hingga sistem operasi perangkat lunak. Selama kuliah kamu akan banyak mengkaji pemrograman dan komputasi, dan dibekali pula dengan keterampilan merancang perangkat lunak."
+        "deskripsi": "Teknik Informatika merupakan bidang ilmu yang mempelajari bagaimana menggunakan teknologi komputer secara optimal guna menangani masalah transformasi atau pengolahan data."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "TEKNIK INFORMATIKA",
-        "deskripsi": "Teknik Informatika merupakan bidang ilmu yang mempelajari bagaimana menggunakan teknologi komputer secara optimal guna menangani masalah transformasi atau pengolahan data dengan proses logika. Di Jurusan Teknik Informatika kamu akan banyak belajar tentang pemrograman untuk pengembangan perangkat lunak, aplikasi, hingga sistem operasi perangkat lunak. Selama kuliah kamu akan banyak mengkaji pemrograman dan komputasi, dan dibekali pula dengan keterampilan merancang perangkat lunak."
+        "deskripsi": "Teknik Informatika merupakan bidang ilmu yang mempelajari bagaimana menggunakan teknologi komputer secara optimal guna menangani masalah transformasi atau pengolahan data."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "ILMU KOMPUTER",
-        "deskripsi": "Ilmu Komputer adalah studi tentang teori, eksperimen, dan rekayasa yang membentuk dasar untuk desain dan penggunaan komputer. Mahasiswa akan mempelajari algoritma, struktur data, kecerdasan buatan, sistem operasi, dan pengembangan software."
+        "deskripsi": "Ilmu Komputer adalah studi tentang teori, eksperimen, dan rekayasa yang membentuk dasar untuk desain dan penggunaan komputer."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "ADMINISTRASI PUBLIK",
-        "deskripsi": "Administrasi Publik mempelajari tentang kebijakan publik, manajemen pemerintahan, dan pelayanan publik. Mahasiswa akan dibekali kemampuan dalam merencanakan, mengorganisir, dan mengevaluasi program-program pemerintah untuk kesejahteraan masyarakat."
+        "deskripsi": "Administrasi Publik mempelajari tentang kebijakan publik, manajemen pemerintahan, dan pelayanan publik."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "ADMINISTRASI NEGARA",
+        "deskripsi": "Administrasi Negara mempelajari tentang kebijakan publik, manajemen pemerintahan, dan pelayanan publik."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "ILMU PEMERINTAHAN",
+        "deskripsi": "Ilmu Pemerintahan mempelajari tentang sistem pemerintahan, kebijakan publik, dan hubungan antar lembaga pemerintahan."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "AKUNTANSI",
-        "deskripsi": "Akuntansi adalah studi tentang pencatatan, pengklasifikasian, dan pelaporan transaksi keuangan. Mahasiswa akan mempelajari audit, perpajakan, sistem informasi akuntansi, dan standar pelaporan keuangan."
+        "deskripsi": "Akuntansi adalah studi tentang pencatatan, pengklasifikasian, dan pelaporan transaksi keuangan."
     },
     {
         "tingkat_pendidikan": "S1",
         "nama_program_studi": "EKONOMI PEMBANGUNAN",
-        "deskripsi": "Ekonomi Pembangunan fokus pada analisis dan perencanaan pembangunan ekonomi, terutama di negara berkembang. Mahasiswa mempelajari kebijakan ekonomi, pertumbuhan ekonomi, kemiskinan, dan distribusi pendapatan."
+        "deskripsi": "Ekonomi Pembangunan fokus pada analisis dan perencanaan pembangunan ekonomi, terutama di negara berkembang."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "PSIKOLOGI",
+        "deskripsi": "Psikologi adalah ilmu yang mempelajari perilaku dan proses mental manusia."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "KESEHATAN MASYARAKAT",
+        "deskripsi": "Kesehatan Masyarakat mempelajari upaya pencegahan penyakit dan peningkatan kesehatan masyarakat."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "KEPERAWATAN",
+        "deskripsi": "Keperawatan adalah ilmu yang mempelajari perawatan kesehatan pasien dan pelayanan kesehatan."
+    },
+    {
+        "tingkat_pendidikan": "DIII",
+        "nama_program_studi": "KEPERAWATAN",
+        "deskripsi": "Keperawatan adalah ilmu yang mempelajari perawatan kesehatan pasien dan pelayanan kesehatan."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "TEKNIK SIPIL",
+        "deskripsi": "Teknik Sipil mempelajari perancangan, pembangunan, dan pemeliharaan infrastruktur."
+    },
+    {
+        "tingkat_pendidikan": "S1",
+        "nama_program_studi": "TEKNIK ELEKTRO",
+        "deskripsi": "Teknik Elektro mempelajari aplikasi listrik dan elektronika dalam berbagai sistem."
     },
 ]
 
@@ -172,31 +240,31 @@ PROGRAM_STUDI_DATA = [
 JURUSAN_SMA_DATA = [
     {
         "nama_jurusan": "IPA",
-        "deskripsi": "Program Ilmu Pengetahuan Alam (IPA) mempersiapkan siswa melanjutkan pendidikan ke jenjang pendidikan tinggi yang berkaitan dengan Matematika dan Ilmu Pengetahuan Alam baik dalam bidang akademik maupun pendidikan profesional. Program ini juga mempersiapkan bekal kehidupan kepada siswa yang tidak langsung untuk bekerja di bidang yang sesuai dengan program ini."
+        "deskripsi": "Program Ilmu Pengetahuan Alam (IPA) mempersiapkan siswa melanjutkan pendidikan ke jenjang pendidikan tinggi yang berkaitan dengan Matematika dan Ilmu Pengetahuan Alam."
     },
     {
         "nama_jurusan": "IPS",
-        "deskripsi": "Ruang lingkup kajian IPS meliputi hal-hal yang berkaitan dengan keluarga, masyarakat setempat, uang, tabungan, pajak, ekonomi setempat, wilayah propinsi, wilayah kepulauan dan pengenalan kawasan dunia. Sedangkan ruang lingkup pengajaran sejarah meliputi: sejarah lokal, kerajaan di Indonesia, tokoh dan peristiwa, bangunan sejarah, Indonesia pada zaman penjajahan dan beberapa peristiwa penting masa kemerdekaan."
+        "deskripsi": "Ruang lingkup kajian IPS meliputi hal-hal yang berkaitan dengan keluarga, masyarakat setempat, uang, tabungan, pajak, ekonomi setempat, dan sejarah."
     },
     {
         "nama_jurusan": "BAHASA",
-        "deskripsi": "Program Bahasa fokus pada pembelajaran bahasa dan sastra, baik bahasa Indonesia maupun bahasa asing seperti Inggris, Mandarin, Jepang, dll. Siswa akan mempelajari linguistik, sastra, dan budaya untuk menjadi ahli bahasa atau bekerja di bidang komunikasi dan media."
+        "deskripsi": "Program Bahasa fokus pada pembelajaran bahasa dan sastra, baik bahasa Indonesia maupun bahasa asing."
     },
     {
         "nama_jurusan": "TEKNIK KOMPUTER DAN JARINGAN",
-        "deskripsi": "Jurusan TKJ mempelajari tentang cara instalasi PC, instalasi LAN, maintenance komputer dan troubleshooting. Lulusan TKJ diharapkan mampu mengelola jaringan komputer, instalasi perangkat keras dan lunak, serta melakukan perbaikan perangkat komputer."
+        "deskripsi": "Jurusan TKJ mempelajari tentang cara instalasi PC, instalasi LAN, maintenance komputer dan troubleshooting."
     },
     {
         "nama_jurusan": "REKAYASA PERANGKAT LUNAK",
-        "deskripsi": "Jurusan RPL fokus pada pengembangan software, mulai dari analisis kebutuhan, desain, coding, testing hingga maintenance. Siswa akan belajar berbagai bahasa pemrograman dan metodologi pengembangan perangkat lunak."
+        "deskripsi": "Jurusan RPL fokus pada pengembangan software, mulai dari analisis kebutuhan, desain, coding, testing hingga maintenance."
     },
     {
         "nama_jurusan": "AKUNTANSI",
-        "deskripsi": "Jurusan Akuntansi SMK mempelajari proses pencatatan, pengelompokan, dan pelaporan transaksi keuangan. Siswa akan dibekali kemampuan membuat laporan keuangan, perpajakan dasar, dan penggunaan software akuntansi."
+        "deskripsi": "Jurusan Akuntansi SMK mempelajari proses pencatatan, pengelompokan, dan pelaporan transaksi keuangan."
     },
     {
         "nama_jurusan": "ADMINISTRASI PERKANTORAN",
-        "deskripsi": "Jurusan Administrasi Perkantoran mempelajari tata kelola perkantoran, kesekretariatan, korespondensi, kearsipan, dan manajemen administrasi. Lulusan diharapkan mampu mengelola administrasi kantor dengan baik."
+        "deskripsi": "Jurusan Administrasi Perkantoran mempelajari tata kelola perkantoran, kesekretariatan, korespondensi, kearsipan, dan manajemen administrasi."
     },
 ]
 
@@ -220,6 +288,17 @@ melakukan konversi data;
 melakukan kompilasi data pengolahan;
 melakukan perekaman data spasial;
 melakukan uji coba program multimedia interaktif;"""
+    },
+    {
+        "nama_jabatan": "Pranata Komputer Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melaksanakan kegiatan teknologi informasi berbasis komputer yang kompleks meliputi analisis sistem, pengembangan aplikasi, dan pengelolaan database",
+        "rincian_kegiatan_fungsi": """melakukan analisis kebutuhan sistem informasi;
+merancang dan mengembangkan aplikasi;
+melakukan pengujian sistem dan aplikasi;
+melakukan pemeliharaan database;
+memberikan dukungan teknis tingkat lanjut;
+menyusun dokumentasi sistem;
+melakukan optimasi kinerja sistem;"""
     },
     {
         "nama_jabatan": "Analis Hukum Ahli Pertama",
@@ -285,81 +364,221 @@ menyusun laporan hasil audit;
 melakukan monitoring tindak lanjut audit;
 memberikan konsultasi terkait audit;"""
     },
+    {
+        "nama_jabatan": "Statistisi Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melakukan kegiatan statistik yang meliputi pengumpulan, pengolahan, analisis, dan penyajian data statistik",
+        "rincian_kegiatan_fungsi": """merancang survei dan pengumpulan data;
+melakukan pengolahan data statistik;
+melakukan analisis statistik;
+menyajikan hasil analisis dalam bentuk laporan;
+melakukan validasi data;
+memberikan rekomendasi berdasarkan analisis data;"""
+    },
+    {
+        "nama_jabatan": "Analis SDM Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melakukan analisis kebutuhan SDM, perencanaan pengembangan SDM, dan evaluasi kinerja pegawai",
+        "rincian_kegiatan_fungsi": """melakukan analisis kebutuhan SDM;
+menyusun program pengembangan kompetensi;
+melakukan evaluasi kinerja pegawai;
+melakukan analisis beban kerja;
+menyusun laporan analisis SDM;
+memberikan rekomendasi pengembangan SDM;"""
+    },
+    {
+        "nama_jabatan": "Pengelola Keuangan",
+        "deskripsi_tugas_pokok": "Melakukan pengelolaan administrasi keuangan, pembukuan, dan pelaporan keuangan",
+        "rincian_kegiatan_fungsi": """melakukan pencatatan transaksi keuangan;
+menyusun laporan keuangan;
+melakukan verifikasi dokumen keuangan;
+melakukan rekonsiliasi keuangan;
+menyusun laporan pertanggungjawaban keuangan;"""
+    },
+    {
+        "nama_jabatan": "Penyuluh Sosial Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melakukan penyuluhan, bimbingan, dan pendampingan sosial kepada masyarakat",
+        "rincian_kegiatan_fungsi": """melakukan identifikasi masalah sosial;
+menyusun program penyuluhan sosial;
+melakukan penyuluhan kepada masyarakat;
+melakukan pendampingan sosial;
+menyusun laporan kegiatan penyuluhan;
+melakukan evaluasi program penyuluhan;"""
+    },
+    {
+        "nama_jabatan": "Analis Kesehatan Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melakukan analisis dan evaluasi program kesehatan masyarakat",
+        "rincian_kegiatan_fungsi": """melakukan analisis data kesehatan;
+menyusun program kesehatan masyarakat;
+melakukan monitoring dan evaluasi program kesehatan;
+menyusun laporan analisis kesehatan;
+memberikan rekomendasi program kesehatan;"""
+    },
+    {
+        "nama_jabatan": "Perawat Ahli Pertama",
+        "deskripsi_tugas_pokok": "Melakukan asuhan keperawatan kepada pasien sesuai standar profesi",
+        "rincian_kegiatan_fungsi": """melakukan pengkajian keperawatan;
+menyusun rencana asuhan keperawatan;
+melaksanakan tindakan keperawatan;
+melakukan evaluasi asuhan keperawatan;
+melakukan dokumentasi keperawatan;
+memberikan edukasi kesehatan kepada pasien;"""
+    },
 ]
 
-# ==================== JABATAN TEMPLATES ====================
+# ==================== JABATAN TEMPLATES (DIPERLUAS) ====================
 JABATAN_TEMPLATES = [
     {
         "nama": "Pranata Komputer Terampil",
         "tingkat": "DIII",
         "prodi": ["TEKNOLOGI INFORMASI", "SISTEM INFORMASI"],
         "gaji_min": 2918320,
-        "gaji_max": 6994006
+        "gaji_max": 6994006,
+        "tingkat_keketatan": "sedang"  # rasio 1:100-300
+    },
+    {
+        "nama": "Pranata Komputer Ahli Pertama",
+        "tingkat": "S1",
+        "prodi": ["TEKNIK INFORMATIKA", "ILMU KOMPUTER", "SISTEM INFORMASI"],
+        "gaji_min": 3398120,
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "tinggi"  # rasio 1:300-500
     },
     {
         "nama": "Analis Hukum Ahli Pertama",
         "tingkat": "S1",
         "prodi": ["HUKUM"],
         "gaji_min": 3398120,
-        "gaji_max": 8600528
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "sangat_tinggi"  # rasio 1:500-1000
     },
     {
         "nama": "Perencana Ahli Pertama",
         "tingkat": "S1",
-        "prodi": ["MATEMATIKA", "STATISTIK", "STATISTIKA"],
+        "prodi": ["MATEMATIKA", "STATISTIKA", "EKONOMI PEMBANGUNAN"],
         "gaji_min": 3398120,
-        "gaji_max": 8600528
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "sedang"
     },
     {
         "nama": "Pranata Hubungan Masyarakat Ahli Pertama",
         "tingkat": "S1",
         "prodi": ["MANAJEMEN KOMUNIKASI", "DESAIN KOMUNIKASI VISUAL", "ILMU KOMUNIKASI", "JURNALISTIK", "HUBUNGAN MASYARAKAT"],
         "gaji_min": 3398120,
-        "gaji_max": 8600528
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "tinggi"
     },
     {
         "nama": "Arsiparis Terampil",
         "tingkat": "DIII",
         "prodi": ["MANAJEMEN", "TEKNOLOGI INFORMASI", "SISTEM INFORMASI"],
         "gaji_min": 2908320,
-        "gaji_max": 6984006
+        "gaji_max": 6984006,
+        "tingkat_keketatan": "rendah"  # rasio 1:50-100
     },
     {
         "nama": "Analis Kebijakan Ahli Muda",
         "tingkat": "S1",
-        "prodi": ["ADMINISTRASI PUBLIK", "ILMU PEMERINTAHAN"],
+        "prodi": ["ADMINISTRASI PUBLIK", "ADMINISTRASI NEGARA", "ILMU PEMERINTAHAN"],
         "gaji_min": 3500000,
-        "gaji_max": 9000000
+        "gaji_max": 9000000,
+        "tingkat_keketatan": "tinggi"
     },
     {
-        "nama": "Programmer Ahli Pertama",
+        "nama": "Statistisi Ahli Pertama",
         "tingkat": "S1",
-        "prodi": ["TEKNIK INFORMATIKA", "ILMU KOMPUTER", "SISTEM INFORMASI"],
+        "prodi": ["STATISTIKA", "MATEMATIKA"],
         "gaji_min": 3398120,
-        "gaji_max": 8600528
-    },
-    {
-        "nama": "Data Scientist Ahli Muda",
-        "tingkat": "S1",
-        "prodi": ["STATISTIKA", "MATEMATIKA", "ILMU KOMPUTER"],
-        "gaji_min": 3500000,
-        "gaji_max": 9500000
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "sedang"
     },
     {
         "nama": "Auditor Ahli Muda",
         "tingkat": "S1",
         "prodi": ["AKUNTANSI"],
         "gaji_min": 3500000,
-        "gaji_max": 9000000
+        "gaji_max": 9000000,
+        "tingkat_keketatan": "sangat_tinggi"
     },
     {
         "nama": "Analis SDM Ahli Pertama",
         "tingkat": "S1",
         "prodi": ["PSIKOLOGI", "MANAJEMEN"],
         "gaji_min": 3398120,
-        "gaji_max": 8600528
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "tinggi"
     },
+    {
+        "nama": "Pengelola Keuangan",
+        "tingkat": "DIII",
+        "prodi": ["AKUNTANSI", "MANAJEMEN"],
+        "gaji_min": 2918320,
+        "gaji_max": 6994006,
+        "tingkat_keketatan": "sedang"
+    },
+    {
+        "nama": "Penyuluh Sosial Ahli Pertama",
+        "tingkat": "S1",
+        "prodi": ["ILMU KESEJAHTERAAN SOSIAL", "SOSIOLOGI", "PSIKOLOGI"],
+        "gaji_min": 3398120,
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "rendah"
+    },
+    {
+        "nama": "Analis Kesehatan Ahli Pertama",
+        "tingkat": "S1",
+        "prodi": ["KESEHATAN MASYARAKAT"],
+        "gaji_min": 3398120,
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "sedang"
+    },
+    {
+        "nama": "Perawat Ahli Pertama",
+        "tingkat": "S1",
+        "prodi": ["KEPERAWATAN"],
+        "gaji_min": 3398120,
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "tinggi"
+    },
+    {
+        "nama": "Perawat Terampil",
+        "tingkat": "DIII",
+        "prodi": ["KEPERAWATAN"],
+        "gaji_min": 2918320,
+        "gaji_max": 6994006,
+        "tingkat_keketatan": "sedang"
+    },
+    {
+        "nama": "Analis Anggaran Ahli Pertama",
+        "tingkat": "S1",
+        "prodi": ["AKUNTANSI", "EKONOMI PEMBANGUNAN", "MANAJEMEN"],
+        "gaji_min": 3398120,
+        "gaji_max": 8600528,
+        "tingkat_keketatan": "tinggi"
+    }
 ]
+
+
+def calculate_passing_grade(tingkat_keketatan, alokasi):
+    """
+    Menghitung passing grade berdasarkan tingkat keketatan
+    Returns: (jumlah_pelamar, rasio, persentase_passing_grade)
+    """
+    if tingkat_keketatan == "sangat_tinggi":
+        # Rasio 1:500 - 1:1000
+        rasio = random.randint(500, 1000)
+    elif tingkat_keketatan == "tinggi":
+        # Rasio 1:300 - 1:500
+        rasio = random.randint(300, 500)
+    elif tingkat_keketatan == "sedang":
+        # Rasio 1:100 - 1:300
+        rasio = random.randint(100, 300)
+    else:  # rendah
+        # Rasio 1:50 - 1:100
+        rasio = random.randint(50, 100)
+    
+    jumlah_pelamar = alokasi * rasio
+    persentase = round((alokasi / jumlah_pelamar) * 100, 2)
+    
+    return jumlah_pelamar, rasio, persentase
 
 
 def generate_tabel_instansi(n_samples=50):
@@ -374,7 +593,7 @@ def generate_tabel_instansi(n_samples=50):
 
 
 def generate_tabel_jabatan(n_samples=100):
-    """Generate tabel 2: Data Jabatan dengan Formasi"""
+    """Generate tabel 2: Data Jabatan dengan Formasi dan Passing Grade"""
     data = []
     periode_seleksi = "2024"
     
@@ -390,12 +609,24 @@ def generate_tabel_jabatan(n_samples=100):
         else:
             prodi_str = jabatan["prodi"][0]
         
+        alokasi = random.randint(1, 5)
+        
+        # Hitung passing grade
+        jumlah_pelamar, rasio, persentase = calculate_passing_grade(
+            jabatan["tingkat_keketatan"], 
+            alokasi
+        )
+        
         row = {
             "periode_seleksi_casn": periode_seleksi,
             "nama_jabatan": jabatan["nama"],
             "kualifikasi_tingkat_pendidikan": jabatan["tingkat"],
             "kualifikasi_program_studi_jurusan": prodi_str,
-            "alokasi_kebutuhan": random.randint(1, 5),
+            "alokasi_kebutuhan": alokasi,
+            "jumlah_pelamar": jumlah_pelamar,
+            "rasio_keketatan": f"1:{rasio}",
+            "passing_grade_persen": persentase,
+            "tingkat_keketatan": jabatan["tingkat_keketatan"],
             "eselon_1_penempatan": instansi_row["instansi_eselon_1"],
             "eselon_2_penempatan": instansi_row["instansi_eselon_2"],
             "eselon_3_penempatan": instansi_row["instansi_eselon_3"],
@@ -434,7 +665,7 @@ def main():
     df_instansi.to_csv(filename1, index=False, encoding='utf-8-sig')
     print(f"   ✅ Saved: {filename1} ({len(df_instansi)} rows)")
     
-    print("\n📊 Table 2: Data Jabatan dan Formasi")
+    print("\n📊 Table 2: Data Jabatan dan Formasi (with Passing Grade)")
     df_jabatan = generate_tabel_jabatan(n_samples=200)
     filename2 = f"tabel_2_jabatan_formasi_{timestamp}.csv"
     df_jabatan.to_csv(filename2, index=False, encoding='utf-8-sig')
@@ -473,8 +704,17 @@ def main():
     print(f"\n📈 Statistics Tabel 2 (Jabatan):")
     print(f"   - Unique jabatan: {df_jabatan['nama_jabatan'].nunique()}")
     print(f"   - Total formasi: {df_jabatan['alokasi_kebutuhan'].sum()}")
+    print(f"   - Total pelamar: {df_jabatan['jumlah_pelamar'].sum():,}")
     print(f"   - Jabatan by tingkat pendidikan:")
     print(df_jabatan['kualifikasi_tingkat_pendidikan'].value_counts().to_string())
+    
+    print(f"\n📊 Passing Grade Statistics:")
+    print(f"   - Min passing grade: {df_jabatan['passing_grade_persen'].min():.2f}%")
+    print(f"   - Max passing grade: {df_jabatan['passing_grade_persen'].max():.2f}%")
+    print(f"   - Avg passing grade: {df_jabatan['passing_grade_persen'].mean():.2f}%")
+    
+    print(f"\n🎯 Tingkat Keketatan:")
+    print(df_jabatan['tingkat_keketatan'].value_counts().to_string())
     
     print("\n" + "="*60)
     print("🎉 Data generation completed successfully!")
