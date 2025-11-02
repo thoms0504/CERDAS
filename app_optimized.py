@@ -528,18 +528,69 @@ class HybridSearchEngine:
         """Mode 1: Cari jabatan untuk kandidat"""
         results = self.df.copy()
         
-        # Filter 1: Pendidikan
+        # Filter 1: Jurusan/Program Studi (PRIORITAS UTAMA)
+        user_jurusan = profile.get('jurusan', '').strip()
+        if user_jurusan:
+            # Normalisasi input jurusan user
+            user_jurusan_normalized = normalize_text(user_jurusan)
+            
+            # Filter jabatan yang memiliki jurusan yang cocok
+            def check_jurusan_match(kualifikasi_prodi):
+                if pd.isna(kualifikasi_prodi):
+                    return False
+                
+                # Normalisasi kualifikasi prodi dari database
+                kualifikasi_normalized = normalize_text(str(kualifikasi_prodi))
+                
+                # Split jika ada multiple prodi (dipisah dengan newline atau koma)
+                prodi_list = []
+                if '\n' in str(kualifikasi_prodi):
+                    prodi_list = [normalize_text(p) for p in str(kualifikasi_prodi).split('\n') if p.strip()]
+                elif ',' in str(kualifikasi_prodi):
+                    prodi_list = [normalize_text(p) for p in str(kualifikasi_prodi).split(',') if p.strip()]
+                else:
+                    prodi_list = [kualifikasi_normalized]
+                
+                # Cek apakah jurusan user cocok dengan salah satu prodi
+                for prodi in prodi_list:
+                    if user_jurusan_normalized in prodi or prodi in user_jurusan_normalized:
+                        return True
+                    
+                    # Cek kecocokan parsial (misal: "teknik informatika" cocok dengan "informatika")
+                    user_words = set(user_jurusan_normalized.split())
+                    prodi_words = set(prodi.split())
+                    
+                    # Jika ada minimal 2 kata yang sama atau 1 kata penting yang sama
+                    common_words = user_words.intersection(prodi_words)
+                    if len(common_words) >= 2:
+                        return True
+                    elif len(common_words) == 1:
+                        # Kata penting (bukan kata umum seperti 'dan', 'atau', dll)
+                        important_words = common_words - {'dan', 'atau', 'serta', 'di', 'dari', 'untuk'}
+                        if important_words:
+                            return True
+                
+                return False
+            
+            results['jurusan_match'] = results['kualifikasi_program_studi_jurusan'].apply(check_jurusan_match)
+            results = results[results['jurusan_match'] == True]
+            
+            # Jika tidak ada hasil setelah filter jurusan, return empty dataframe
+            if len(results) == 0:
+                return pd.DataFrame()
+        
+        # Filter 2: Pendidikan
         user_edu = profile.get('pendidikan_terakhir', '')
         user_rank = get_education_rank(user_edu)
         
         results['edu_rank'] = results['kualifikasi_tingkat_pendidikan'].apply(get_education_rank)
         results = results[results['edu_rank'] <= user_rank]
         
-        # Filter 2: Provinsi
+        # Filter 3: Provinsi
         if profile.get('provinsi_penempatan') and profile['provinsi_penempatan'] != 'Semua':
             results = results[results['provinsi'] == profile['provinsi_penempatan'].upper()]
         
-        # Filter 3: Salary
+        # Filter 4: Salary
         if profile.get('gaji_minimum', 0) > 0:
             results = results[results['gaji_max'] >= profile['gaji_minimum']]
         
@@ -1522,7 +1573,8 @@ def main():
                                 st.session_state.chatbot_mode1 = None
                     
                     if len(results) > 0:
-                        st.success(f"✅ Ditemukan {len(results)} rekomendasi jabatan!")
+                        st.success(f"✅ Ditemukan {len(results)} rekomendasi jabatan yang sesuai dengan jurusan **{profile.get('jurusan', '-')}**!")
+                        st.info(f"📚 Filter aktif: Hanya menampilkan jabatan yang membutuhkan jurusan **{profile.get('jurusan', '-')}** atau sejenisnya")
                         
                         # Visualisasi
                         if HAS_PLOTLY:
@@ -1574,6 +1626,31 @@ def main():
                                         <div style="color: #666; margin-top: 0.5rem;">Overall Match</div>
                                     </div>
                                     """, unsafe_allow_html=True)
+                                    # Ketetatan Skor
+                                    if pd.notna(row.get('passing_grade_persen')):
+                                        tingkat_keketatan = row.get('tingkat_keketatan', '-').replace('_', ' ').title()
+                                        rasio_keketatan = row.get('rasio_keketatan', '-')
+                                        
+                                    st.markdown("##### 🎯 Tingkat Keketatan")
+                                    if pd.notna(row.get('passing_grade_persen')):
+                                        st.markdown(f"""
+                                        <div class="card-container" style="text-align: center;">
+                                            <div style="font-size: 2rem; font-weight: 600; color: #ff6b6b;">
+                                                {row.get('passing_grade_persen', 0):.2f}%
+                                            </div>
+                                            <div style="color: #666; margin-top: 0.5rem;">
+                                                {tingkat_keketatan} (Rasio: {rasio_keketatan})
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        st.markdown(f"""
+                                        <div class="card-container" style="text-align: center;">
+                                            <div style="font-size: 1.2rem; color: #666;">
+                                                Data Keketatan Tidak Tersedia
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
                                 
                                 # Tugas & Fungsi
                                 if pd.notna(row.get('deskripsi_tugas_pokok')):
@@ -1607,7 +1684,54 @@ def main():
                         elif not use_ai:
                             st.info("💡 Aktifkan AI Chatbot dengan mengatur GEMINI_API_KEY di environment atau .env file")
                     else:
-                        st.warning("❌ Tidak ditemukan jabatan yang sesuai. Coba ubah filter pencarian.")
+                        st.error("❌ Tidak ditemukan jabatan yang sesuai dengan jurusan Anda")
+                        
+                        st.markdown("""
+                        <div class="custom-info-box" style="background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);">
+                            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                💡 Kemungkinan Penyebab:
+                            </div>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li>Jurusan <strong>{}</strong> tidak tersedia di database formasi CASN saat ini</li>
+                                <li>Tidak ada jabatan yang membuka formasi untuk jurusan tersebut</li>
+                                <li>Coba gunakan nama jurusan yang lebih umum (misal: "Informatika" bukan "Teknik Informatika")</li>
+                            </ul>
+                            <div style="margin-top: 1rem; padding: 1rem; background: white; border-radius: 8px;">
+                                <strong>Saran:</strong> Coba ubah nama jurusan atau cek kembali ejaan jurusan Anda.
+                            </div>
+                        </div>
+                        """.format(profile.get('jurusan', '-')), unsafe_allow_html=True)
+                        
+                        # Tampilkan beberapa jurusan yang tersedia sebagai referensi
+                        if st.session_state.data_manager.df_merged is not None:
+                            with st.expander("📋 Lihat Daftar Jurusan yang Tersedia di Database"):
+                                all_prodi = set()
+                                for _, row in st.session_state.data_manager.df_merged.iterrows():
+                                    kualifikasi = row.get('kualifikasi_program_studi_jurusan', '')
+                                    if pd.notna(kualifikasi):
+                                        if '\n' in str(kualifikasi):
+                                            prodi_list = [p.strip() for p in str(kualifikasi).split('\n') if p.strip()]
+                                        elif ',' in str(kualifikasi):
+                                            prodi_list = [p.strip() for p in str(kualifikasi).split(',') if p.strip()]
+                                        else:
+                                            prodi_list = [str(kualifikasi).strip()]
+                                        all_prodi.update(prodi_list)
+                                
+                                all_prodi_sorted = sorted(list(all_prodi))
+                                
+                                # Tampilkan dalam kolom
+                                col1, col2, col3 = st.columns(3)
+                                third = len(all_prodi_sorted) // 3
+                                
+                                with col1:
+                                    for prodi in all_prodi_sorted[:third]:
+                                        st.markdown(f"• {prodi}")
+                                with col2:
+                                    for prodi in all_prodi_sorted[third:2*third]:
+                                        st.markdown(f"• {prodi}")
+                                with col3:
+                                    for prodi in all_prodi_sorted[2*third:]:
+                                        st.markdown(f"• {prodi}")
             
             # Display previous results (untuk chat interaction)
             if not submit_candidate and 'results_mode1' in st.session_state and st.session_state.results_mode1 is not None:
@@ -1680,7 +1804,6 @@ def main():
                     if use_ai and 'chatbot_mode1' in st.session_state and st.session_state.chatbot_mode1:
                         render_chatbot_section(st.session_state.chatbot_mode1, 'candidate', 'mode1')
     
-    # TAB 3: Mode 2 - Instansi → Pegawai
     # TAB 3: Mode 2 - Instansi → Pegawai
     with tabs[2]:
         st.markdown('<div class="section-header">🏢 Mode Instansi: Temukan Pegawai yang Tepat</div>', unsafe_allow_html=True)
@@ -1830,16 +1953,7 @@ def main():
                                         if row.get('gaji_min', 0) > 0:
                                             st.markdown(f"**💰 Gaji:** {format_currency(row['gaji_min'])} - {format_currency(row['gaji_max'])}")
                                 
-                                with col_b:
-                                    st.markdown("##### 📊 Skor Kecocokan")
-                                    st.markdown(f"""
-                                    <div class="card-container" style="text-align: center;">
-                                        <div style="font-size: 3rem; font-weight: 700; color: #667eea;">
-                                            {row['match_score']:.0%}
-                                        </div>
-                                        <div style="color: #666; margin-top: 0.5rem;">Overall Match</div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                
                         
                         st.markdown("---")
                         csv = results.to_csv(index=False)
